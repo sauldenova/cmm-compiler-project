@@ -12,7 +12,6 @@
 %token LPAREN RPAREN
 %token LBRACE RBRACE
 %token COMMENT LLONGCOMMENT RLONGCOMMENT
-%token STRING
 %token IDENTIFIER
 
 %left COLON
@@ -26,7 +25,8 @@
 
 %%
 
-start : decl+ { }
+start : decl { }
+      | start decl { }
       ;
 
 decl : declVariable { }
@@ -50,14 +50,26 @@ declFunction : type IDENTIFIER LPAREN formals RPAREN block { }
              | VOID IDENTIFIER LPAREN formals RPAREN block { }
              ;
 
-formales : variable+ , { }
-         | ""
+formals : /* empty */ { }
+         | formalsDef { }
          ;
 
-block : LBRACE declVariable* instr*  RBRACE { }
+formalsDef : variable COLON { }
+           | formalsDef variable COLON { }
+           ;
+
+block : LBRACE blockDef RBRACE { }
       ;
 
-instr : <expr> SEMICOLON { }
+blockDef : /* empty */ { }
+         | declVariable { }
+         | instr { }
+         | blockDef declVariable { }
+         | blockDef instr { }
+         ;
+
+instr : SEMICOLON { }
+      | expr SEMICOLON {}
       | instrIf { }
       | instrWhile { }
       | instrFor { }
@@ -66,24 +78,35 @@ instr : <expr> SEMICOLON { }
       | block { }
       ;
 
-instrIf : IF LPAREN <expr> RPAREN <ELSE instr> { }
+instrIf : IF LPAREN RPAREN { }
+        | IF LPAREN expr RPAREN { }
+        | IF LPAREN RPAREN ELSE instr { }
+        | IF LPAREN expr RPAREN ELSE instr { }
         ;
 
 instrWhile : WHILE LPAREN expr RPAREN instr { }
            ;
 
-instrFor : FOR LPAREN <expr> SEMICOLON expr SEMICOLON <expr> RPAREN instr { }
+instrFor : FOR LPAREN SEMICOLON expr SEMICOLON RPAREN instr { }
+         | FOR LPAREN SEMICOLON expr SEMICOLON expr RPAREN instr { }
+         | FOR LPAREN expr SEMICOLON expr SEMICOLON RPAREN instr { }
+         | FOR LPAREN expr SEMICOLON expr SEMICOLON expr RPAREN instr { }
          ;
 
-instrReturn : RETURN <expr> SEMICOLON { }
+instrReturn : RETURN SEMICOLON { }
+            | RETURN expr SEMICOLON { }
             ;
 
-instrPrint : PRINT LPAREN expr+ , RPAREN SEMICOLON { }
+instrPrint : PRINT LPAREN instrPrintDef RPAREN SEMICOLON { }
            ;
+
+instrPrintDef : expr COLON { }
+              | instrPrintDef expr COLON { }
+              ;
 
 expr : lValue ASSIGN expr { }
      | constant { }
-     | lvalue { }
+     | lValue { }
      | call { }
      | LPAREN expr RPAREN { }
      | expr ADD expr { }
@@ -112,9 +135,13 @@ lValue : IDENTIFIER
 call : IDENTIFIER LPAREN reals RPAREN { }
      ;
 
-reals : expr+ { }
-      | "" { }
+reals : realsDef { }
+      | /* empty */ { }
       ;
+
+realsDef : expr { }
+         | realsDef expr { }
+         ;
 
 constant : DOUBLECONST { }
          | INTCONST { }
