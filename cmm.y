@@ -15,12 +15,14 @@
 %token IDENTIFIER
 
 %left COLON
+%left ASSIGN
 %left OR
 %left AND
 %left EQUAL NEQUAL
 %left LESS LESSEQ GREATER GREATEREQ
 %left ADD SUB
 %left MUL DIV MOD
+%left LPAREN LBRACKET
 %nonassoc NOT
 
 %%
@@ -62,11 +64,13 @@ block : LBRACE blockDef RBRACE { }
       ;
 
 blockDef : /* empty */ { }
-         | declVariable { }
-         | instr { }
          | blockDef declVariable { }
          | blockDef instr { }
          ;
+
+optExpr : /* empty */ { }
+        | expr { }
+        ;
 
 instr : SEMICOLON { }
       | expr SEMICOLON {}
@@ -78,23 +82,20 @@ instr : SEMICOLON { }
       | block { }
       ;
 
-instrIf : IF LPAREN RPAREN { }
-        | IF LPAREN expr RPAREN { }
-        | IF LPAREN RPAREN ELSE instr { }
-        | IF LPAREN expr RPAREN ELSE instr { }
+instrIf : IF LPAREN optExpr RPAREN instrElse { }
         ;
+
+instrElse : /* empty */ { }
+          | ELSE instr { }
+          ;
 
 instrWhile : WHILE LPAREN expr RPAREN instr { }
            ;
 
-instrFor : FOR LPAREN SEMICOLON expr SEMICOLON RPAREN instr { }
-         | FOR LPAREN SEMICOLON expr SEMICOLON expr RPAREN instr { }
-         | FOR LPAREN expr SEMICOLON expr SEMICOLON RPAREN instr { }
-         | FOR LPAREN expr SEMICOLON expr SEMICOLON expr RPAREN instr { }
+instrFor : FOR LPAREN optExpr SEMICOLON expr SEMICOLON optExpr RPAREN instr { }
          ;
 
-instrReturn : RETURN SEMICOLON { }
-            | RETURN expr SEMICOLON { }
+instrReturn : RETURN optExpr SEMICOLON { }
             ;
 
 instrPrint : PRINT LPAREN instrPrintDef RPAREN SEMICOLON { }
@@ -114,7 +115,6 @@ expr : lValue ASSIGN expr { }
      | expr MUL expr { }
      | expr DIV expr { }
      | expr MOD expr { }
-     | SUB expr { }
      | expr LESS expr { }
      | expr LESSEQ expr { }
      | expr GREATER expr { }
@@ -139,15 +139,19 @@ reals : realsDef { }
       | /* empty */ { }
       ;
 
-realsDef : expr { }
-         | realsDef expr { }
+realsDef : expr COLON { }
+         | realsDef expr COLON { }
          ;
 
-constant : DOUBLECONST { }
-         | INTCONST { }
+constant : sign DOUBLECONST { }
+         | sign INTCONST { }
          | BOOLCONST { }
          | STRINGCONST { }
          ;
+
+sign : /* empty */ { }
+     | SUB { }
+     ;
 
 %%
 
