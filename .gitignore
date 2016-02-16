@@ -92,3 +92,9 @@ $RECYCLE.BIN/
 # Linux trash folder which might appear on any partition or disk
 .Trash-*
 
+### Project specifics ###
+cmm
+cmm.tab.*
+cmm.dSYM/
+lex.yy.c
+cmm.output

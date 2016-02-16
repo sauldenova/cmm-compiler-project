@@ -1,4 +1,5 @@
 %{
+#include "cmm.h"
 #include "cmm.tab.h"
 %}
 
@@ -16,8 +17,8 @@
 "print"                         { return(PRINT); }
 "readint"                       { return(READINT); }
 "readline"                      { return(READLINE); }
-"true"                          { yylval = 1; return(BOOLCONST); }
-"false"                         { yylval = 0; return(BOOLCONST); }
+"true"                          { yylval.b = 1; return(BOOLCONST); }
+"false"                         { yylval.b = 0; return(BOOLCONST); }
 "+"                             { return(ADD); }
 "-"                             { return(SUB); }
 "*"                             { return(MUL); }
@@ -45,11 +46,11 @@
 "*/"                            { return(RLONGCOMMENT); }
 "//"                            { return(COMMENT); }
 [\"][^\n"]*[\"]                 { return(STRING); }
-[a-zA-Z][a-zA-Z0-9_]*           { return(IDENTIFIER); }
-[0-9]+.[0-9]+                   { yylval = atof(yytext); return(DOUBLECONST); }
-[0-9]+.[0-9]+[E+][0-9]+         { yylval = atof(yytext); return(DOUBLECONST); }
-[0][xX][0-9A-Fa-f]+             { yylval = atoi(yytext); return(INTCONST); }
-[0-9]+                          { yylval = atoi(yytext); return(INTCONST); }
+[a-zA-Z][a-zA-Z0-9_]*           { yylval.s = strdup(yytext); return(IDENTIFIER); }
+[-+]?[0-9]+.[0-9]+              { yylval.d = atof(yytext); return(DOUBLECONST); }
+[-+]?[0-9]+.[0-9]+[E+][0-9]+    { yylval.d = atof(yytext); return(DOUBLECONST); }
+[-+]?[0][xX][0-9A-Fa-f]+        { yylval.i = atoi(yytext); return(INTCONST); }
+[-+]?[0-9]+                     { yylval.i = atoi(yytext); return(INTCONST); }
 .                               { }
 <<EOF>>                         { return(0); }
 %%

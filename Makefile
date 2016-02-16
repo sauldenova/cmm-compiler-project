@@ -1,9 +1,9 @@
-LEX = flex
-YACC = bison
+LEX = /usr/local/Cellar/flex/2.6.0/bin/flex
+YACC = /usr/local/Cellar/bison/3.0.4/bin/bison
 LEX_FLAGS =
 YACC_FLAGS = -d
 C = clang
-C_FLAGS = -ll -ly
+C_FLAGS = -ll -ly -g -Wno-implicit-function-declaration
 
 all: cmm
 
