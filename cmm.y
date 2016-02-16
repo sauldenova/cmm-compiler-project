@@ -45,6 +45,8 @@
 %left MUL DIV MOD
 %left LPAREN LBRACKET
 %nonassoc NOT
+%nonassoc "then"
+%nonassoc ELSE
 
 %type <t> type
 %type <typeexpr> expr
@@ -117,7 +119,7 @@ instr : SEMICOLON { }
 instrIf : IF LPAREN expr RPAREN instr instrElse { if($3.t != 'B') yyerror("Tipos incompatibles: if"); }
         ;
 
-instrElse : /* empty */ { }
+instrElse : /* empty */ { } %prec "then"
           | ELSE instr { }
           ;
 
