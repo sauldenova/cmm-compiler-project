@@ -9,7 +9,7 @@
 
 "/*"                            { BEGIN(C_COMMENT); }
 <C_COMMENT>"*/"                 { BEGIN(INITIAL); }
-<C_COMMENT>.                    { }
+<C_COMMENT>.|\n                 { }
 "//".*"\n"                      { }
 "void"                          { return(VOID); }
 "int"                           { return(INT); }
@@ -49,12 +49,12 @@
 ")"                             { return(RPAREN); }
 "{"                             { return(LBRACE); }
 "}"                             { return(RBRACE); }
-[\"][^\n\"]*[\"]                { return(STRING); }
+[\"][^\n\"]*[\"]                { yylval.s = strdup(yytext); return(STRING); }
 [a-zA-Z][a-zA-Z0-9_]*           { yylval.s = strdup(yytext); return(IDENTIFIER); }
 [-+]?[0-9]+.[0-9]+              { yylval.d = atof(yytext); return(DOUBLECONST); }
 [-+]?[0-9]+.[0-9]+E[-+]?[0-9]+  { yylval.d = atof(yytext); return(DOUBLECONST); }
 [-+]?[0][xX][0-9A-Fa-f]+        { yylval.i = atoi(yytext); return(INTCONST); }
 [-+]?[0-9]+                     { yylval.i = atoi(yytext); return(INTCONST); }
-.                               { }
+.|\n                            { }
 <<EOF>>                         { return(0); }
 %%

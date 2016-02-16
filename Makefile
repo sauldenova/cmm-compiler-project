@@ -11,6 +11,10 @@ clean:
 	rm cmm lex.yy.c cmm.tab.c cmm.tab.h
 	rm -rf cmm.dSYM
 
+test:
+	./cmm < s1.cmm
+	./cmm < s2.cmm
+
 cmm: lex.yy.c cmm.tab.c
 	$(C) $(C_FLAGS) -o cmm lex.yy.c cmm.tab.c
 

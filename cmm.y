@@ -6,7 +6,6 @@
 #include "cmm.h"
 %}
 
-%debug
 %define parse.lac full
 %define parse.error verbose
 
