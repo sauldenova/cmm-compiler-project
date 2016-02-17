@@ -66,7 +66,7 @@ decl : declVariable { }
 declVariable : variable SEMICOLON { }
              ;
 
-variable : type IDENTIFIER { place = lookup($2); place->t = $1; }
+variable : type IDENTIFIER { place = lookup($2); place->te.t = $1; }
          ;
 
 type : INT { $$ = 'I'; }
@@ -76,8 +76,8 @@ type : INT { $$ = 'I'; }
      | type LBRACKET INTCONST RBRACKET { $$ = 'A'; }
      ;
 
-declFunction : type IDENTIFIER LPAREN formals RPAREN block { place = lookup($2); place->t = $1; }
-             | VOID IDENTIFIER LPAREN formals RPAREN block { place = lookup($2); place->t = 'V'; }
+declFunction : type IDENTIFIER LPAREN formals RPAREN block { place = lookup($2); place->te.t = $1; }
+             | VOID IDENTIFIER LPAREN formals RPAREN block { place = lookup($2); place->te.t = 'V'; }
              ;
 
 formals : /* empty */ { }
@@ -114,17 +114,17 @@ instr : SEMICOLON { }
       | block { }
       ;
 
-instrIf : IF LPAREN expr RPAREN instr instrElse { if($3.t != 'B') yyerror("Tipos incompatibles: if"); }
+instrIf : IF LPAREN expr RPAREN instr instrElse { if($3.t != 'B') yyerror("Non-compatible types: if"); }
         ;
 
 instrElse : /* empty */ { } %prec "then"
           | ELSE instr { }
           ;
 
-instrWhile : WHILE LPAREN expr RPAREN instr { if($3.t != 'B') yyerror("Tipos incompatibles: while"); }
+instrWhile : WHILE LPAREN expr RPAREN instr { if($3.t != 'B') yyerror("Non-compatible types: while"); }
            ;
 
-instrFor : FOR LPAREN optExpr SEMICOLON expr SEMICOLON optExpr RPAREN instr { if($5.t != 'B') yyerror("Tipos incompatibles"); }
+instrFor : FOR LPAREN optExpr SEMICOLON expr SEMICOLON optExpr RPAREN instr { if($5.t != 'B') yyerror("Non-compatible types"); }
          ;
 
 instrReturn : RETURN optExpr SEMICOLON { }
@@ -141,34 +141,34 @@ instrPrintDef : expr COLON { }
               | instrPrintDef expr COLON { }
               ;
 
-expr : lValue ASSIGN expr { $$.t = $3.t; }
+expr : lValue ASSIGN expr { if($$.t != $3.t) yyerror("Non-compatible types: ="); else $$.t = $3.t; }
      | constant { $$.t = $1.t; }
      | lValue { }
      | call { $$.t = $1.t; }
      | LPAREN expr RPAREN { $$.t = $2.t; }
-     | expr ADD expr { if(areNumeric($1.t, $3.t) != 0) $$.t = $1.t; else yyerror("Tipos incompatibles: +"); }
-     | expr SUB expr { if(areNumeric($1.t, $3.t) != 0) $$.t = $1.t; else yyerror("Tipos incompatibles: -"); }
-     | expr MUL expr { if(areNumeric($1.t, $3.t) != 0) $$.t = $1.t; else yyerror("Tipos incompatibles: *"); }
-     | expr DIV expr { if(areNumeric($1.t, $3.t) != 0) $$.t = $1.t; else yyerror("Tipos incompatibles: /"); }
-     | expr MOD expr { if($1.t == 'I' && $3.t == 'I') $$.t = $1.t; else yyerror("Tipos incompatibles: %"); }
-     | expr LESS expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Tipos incompatibles: <"); }
-     | expr LESSEQ expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Tipos incompatibles: <="); }
-     | expr GREATER expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Tipos incompatibles: >"); }
-     | expr GREATEREQ expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Tipos incompatibles: >="); }
-     | expr EQUAL expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Tipos incompatibles: =="); }
-     | expr NEQUAL expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Tipos incompatibles: !="); }
-     | expr AND expr { if($1.t == 'B' && $3.t == 'B') $$.t = 'B'; else yyerror("Tipos incompatibles: &&"); }
-     | expr OR expr { if($1.t == 'B' && $3.t == 'B') $$.t = 'B'; else yyerror("Tipos incompatibles: ||"); }
-     | NOT expr { if($2.t == 'B') $$.t = 'B'; else yyerror("Tipos incompatibles: !"); }
+     | expr ADD expr { if(areNumeric($1.t, $3.t) != 0) $$.t = $1.t; else yyerror("Non-compatible types: +"); }
+     | expr SUB expr { if(areNumeric($1.t, $3.t) != 0) $$.t = $1.t; else yyerror("Non-compatible types: -"); }
+     | expr MUL expr { if(areNumeric($1.t, $3.t) != 0) $$.t = $1.t; else yyerror("Non-compatible types: *"); }
+     | expr DIV expr { if(areNumeric($1.t, $3.t) != 0) $$.t = $1.t; else yyerror("Non-compatible types: /"); }
+     | expr MOD expr { if($1.t == 'I' && $3.t == 'I') $$.t = $1.t; else yyerror("Non-compatible types: %"); }
+     | expr LESS expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Non-compatible types: <"); }
+     | expr LESSEQ expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Non-compatible types: <="); }
+     | expr GREATER expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Non-compatible types: >"); }
+     | expr GREATEREQ expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Non-compatible types: >="); }
+     | expr EQUAL expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Non-compatible types: =="); }
+     | expr NEQUAL expr { if(areNumeric($1.t, $3.t) != 0) $$.t = 'B'; else yyerror("Non-compatible types: !="); }
+     | expr AND expr { if($1.t == 'B' && $3.t == 'B') $$.t = 'B'; else yyerror("Non-compatible types: &&"); }
+     | expr OR expr { if($1.t == 'B' && $3.t == 'B') $$.t = 'B'; else yyerror("Non-compatible types: ||"); }
+     | NOT expr { if($2.t == 'B') $$.t = 'B'; else yyerror("Non-compatible types: !"); }
      | READINT LPAREN RPAREN { $$.t = 'I'; }
      | READLINE LPAREN RPAREN { $$.t = 'S'; }
      ;
 
-lValue : IDENTIFIER { $$.t = lookup($1)->t; }
+lValue : IDENTIFIER { $$.t = lookup($1)->te.t; }
        | expr LBRACKET expr RBRACKET { }
        ;
 
-call : IDENTIFIER LPAREN reals RPAREN { $$.t = lookup($1)->t; }
+call : IDENTIFIER LPAREN reals RPAREN { $$.t = lookup($1)->te.t; }
      ;
 
 reals : /* empty */ { }
@@ -233,19 +233,23 @@ t_symbol* lookup(char* sym) {
         if(++sp >= symtab+NHASH) sp = symtab; /* try the next entry */
     }
 
-    fputs("symbol table overflow\n", stderr);
+    fprintf(stderr, "Symbol table overflow\n");
     abort(); /* tried them all, table is full */
+}
+
+void printSymbolTable() {
 }
 
 int main(int argc, char **argv)
 {
     yyparse();
-    printf("Expresion aceptada \n");
+    printf("Expression accepted\nPrinting symbols table\n");
+    printSymbolTable();
     return 0;
 }
 
 int yyerror(char *s)
 {
-    fprintf(stderr,"error: %s\n", s);
+    fprintf(stderr,"Error: %s\n", s);
     exit(1);
 }

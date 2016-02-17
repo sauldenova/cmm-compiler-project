@@ -8,15 +8,15 @@
  */
 typedef struct {
     char t;
-    char *n;
-} t_symbol;
-
-typedef struct {
-    char t;
     double d;
     int i;
     char* s;
 } t_typeexpr;
+
+typedef struct {
+    char *n;
+    t_typeexpr te;
+} t_symbol;
 
 /**
  * Variables

@@ -4,14 +4,14 @@
     } else {
         return b;
     }
-} */
+}
 
 int main() {
     int a; int b; int c; int d;
     a = readint();
     b = readint();
-    //c = function(a, b);
-    d = 1;
+    c = function(a, b);
+    //d = 1;
     while (c < d) {
         d = d + 1;
     }
