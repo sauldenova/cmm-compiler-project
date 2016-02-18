@@ -1,3 +1,5 @@
+%option noyywrap
+
 %{
 #include "cmm.h"
 #include "cmm.tab.h"
@@ -50,7 +52,7 @@
 ")"                             { return(RPAREN); }
 "{"                             { return(LBRACE); }
 "}"                             { return(RBRACE); }
-["][^\n"]*["]                   { yylval.s = strdup(yytext); return(STRING); }
+["][^\n"]*["]                   { yylval.s = strdup(yytext); return(STRINGCONST); }
 ["][^\n"]*[\n]                  { yyerror("Unfinished string"); }
 [a-zA-Z][a-zA-Z0-9_]*           { yylval.s = strdup(yytext); return(IDENTIFIER); }
 [-+]?[0-9]+\.[0-9]+             { yylval.d = atof(yytext); return(DOUBLECONST); }
