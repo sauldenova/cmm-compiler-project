@@ -13,11 +13,11 @@ clean:
 	-rm -rf cmm.dSYM
 
 test: all
-	./cmm s1.cmm
-	./cmm s2.cmm
-	./cmm s3.cmm
-	-./cmm s4.cmm
-	-./cmm s5.cmm
+	./cmm samplePrograms/s1.cmm
+	./cmm samplePrograms/s2.cmm
+	./cmm samplePrograms/s3.cmm
+	-./cmm samplePrograms/s4.cmm
+	-./cmm samplePrograms/s5.cmm
 
 cmm: lex.yy.c cmm.tab.c
 	$(C) $(C_FLAGS) $(C_DEBUG_FLAGS) -o cmm lex.yy.c cmm.tab.c
