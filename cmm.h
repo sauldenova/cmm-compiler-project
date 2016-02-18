@@ -6,8 +6,14 @@
 #define NHASH 10000
 
 /**
+ * Forward declarations
+ */
+struct t_symtab_list;
+
+/**
  * Structure definitions
  */
+// Defines a type expression
 struct t_typeexpr {
     char t;
     double d;
@@ -15,28 +21,47 @@ struct t_typeexpr {
     char* s;
 };
 
+// Defines a symbol
 struct t_symbol {
     char *n;
-    struct t_typeexpr te;
+    char t;
+    int count;
 };
 
-struct t_char_list {
-    char *elem;
-    struct t_char_list *next;
+// Defines a symbol list for the symbol table
+struct t_symbol_list {
+    struct t_symbol_list* next;
+    struct t_symbol* symbol;
+};
+
+// Defines a recursive symbol table
+struct t_symtab {
+    struct t_symtab* parent;
+    struct t_symtab_list* children;
+    struct t_symbol_list* symbols[NHASH];
+};
+
+// Defines a recursive symbol table list
+struct t_symtab_list {
+    struct t_symtab* elem;
+    struct t_symtab_list* next;
 };
 
 /**
  * Variables
  */
 struct t_symbol* place;
-struct t_symbol symtab[NHASH];
-struct t_char_list* symbolList;
+struct t_symtab* currSymTab;
+struct t_symtab* rootSymTab;
+int hasError;
 
 /**
  * Functions
  */
 int areNumeric(char type1, char type2);
-struct t_symbol* lookup(char*);
+struct t_symbol* lookup(char* name);
 struct t_typeexpr assignSymbol(struct t_symbol* sym, struct t_typeexpr expr);
+void pushSymbolTable();
+void popSymbolTable();
 #endif
 

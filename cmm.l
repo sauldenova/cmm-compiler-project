@@ -12,7 +12,7 @@
 "/*"                            { BEGIN(C_COMMENT); }
 <C_COMMENT>"*/"                 { BEGIN(INITIAL); }
 <C_COMMENT>.|\n                 { }
-<C_COMMENT><<EOF>>              { yyerror("Unfinished comment"); }
+<C_COMMENT><<EOF>>              { yyerror("Unfinished comment"); return(0); }
 "//".*"\n"                      { }
 "void"                          { return(VOID); }
 "int"                           { return(INT); }
@@ -52,7 +52,7 @@
 ")"                             { return(RPAREN); }
 "{"                             { return(LBRACE); }
 "}"                             { return(RBRACE); }
-["][^\n"]*["]                   { yylval.s = strdup(yytext); return(STRINGCONST); }
+["][^\n"]*["]                   { if (strlen(yytext) > 31) yyerror("Variable length exceeds the limit of 31 characters"); else { yylval.s = strdup(yytext); return(STRINGCONST); } }
 ["][^\n"]*[\n]                  { yyerror("Unfinished string"); }
 [a-zA-Z][a-zA-Z0-9_]*           { yylval.s = strdup(yytext); return(IDENTIFIER); }
 [-+]?[0-9]+\.[0-9]+             { yylval.d = atof(yytext); return(DOUBLECONST); }
