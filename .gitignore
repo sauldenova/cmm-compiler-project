@@ -98,3 +98,4 @@ cmm.tab.*
 cmm.dSYM/
 lex.yy.c
 cmm.output
+.texpadtmp/

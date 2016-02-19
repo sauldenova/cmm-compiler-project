@@ -1,0 +1,124 @@
+\documentclass[11pt]{article}
+
+\usepackage[spanish,mexico]{babel}
+\usepackage{epsfig}
+\usepackage{float}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[utf8]{inputenc}
+
+\begin{document}
+
+\title{Metodología empleada y manual de operación}
+\author{
+    \Large Diseño de compiladores
+    \\
+    \textit{Dr. Edgar E. Vallejo}
+    \\
+    \\
+    Saúl de Nova Caballero (A01165957)
+    \\
+    Diego Galíndez Barreda (A01370815)
+}
+\maketitle
+
+\section{Metodología empleada}
+
+A continuación viene un resumen de los cambios que se hicieron a la especificación para poder cumplir todos los requerimientos.
+
+\subsection{Expresiones regulares}
+
+Para las expresiones regulares, se convirtieron todos los operadores, tipos y palabras claves del lenguaje en tokens. También 
+se verificaron constantes de strings, enteros en hexadecimal y enteros, flotantes en notación científica y sin la notación. 
+Se consideraron todas las cadenas que no tengan saltos de línea como válidas. Se verificó para los identificadores que fueran 
+a lo más de 31 caracteres. En el caso de que un caracter no sea ' ', \textbackslash n, \textbackslash r ó \textbackslash t.
+\\\\
+Para acomodar comentarios, se utilizó la instrucción \textbf{BEGIN} para determinar los estados de flex. Se creó el estado 
+\textbf{C\_COMMENT} para determinar cuando te encuentras dentro de un comentario.
+
+\subsection{Modificaciones a la gramática}
+
+Para poder tener las expresiones con $^+$ y $^*$ se descompusieron las expresiones de la siguiente manera:
+\\\\
+$Expr\,::=\,Term^+$
+\\
+$Expr\,::=\,Term\,|\,Expr\,Term$
+\\\\
+se cambió a:
+\\\\
+$Expr\,::=\,Term^*$
+\\
+$Expr\,::=\,\epsilon\,|\,Expr\,Term$
+\\\\
+En el caso del valorL se modificó la gramática ya que el tipo era:
+\\\\
+$ValorL\,::=\,identificador\,|\,expr\,[\,expr\,]$
+\\\\
+se cambió a:
+\\\\
+$ValorL\,::=\,identificador\,|\,identificador\,[\,expr\,]$
+\\\\
+Para poder hacer los reales y los formales, se separó la gramática en 3 para poder acomodar comas, vacíos y final sin comas.
+\\\\
+$reals\,::=\,expr^+\,,\,|\,\epsilon$
+\\\\
+se cambió a:
+\\\\
+$reals\,::=\,\epsilon\,|\,realsDefEnd$
+\\
+$realsDefEnd\,::=\,expr\,|\,realsDef\,expr$
+\\
+$realsDef\,::=\,expr\,,|\,realsDef\,expr\,,$
+
+\subsection{Tabla de símbolos}
+
+Para poder manejar adecuadamente los scopes del programa fue necesario utilizar una tabla recursiva de símbolos. Se muestra el 
+concepto en la figura \ref{fig:symtabrec}.
+
+\begin{figure}[H]
+    \centering
+    \epsfig{figure=images/symbols.png,width=3in}
+    \caption{Tabla recursiva de símbolos}
+    \label{fig:symtabrec}
+\end{figure}
+
+En el momento en que se cambia el scope (\textbf{instrIf}, \textbf{instrWhile}, \textbf{instrFor}, \textbf{declFunction}), se 
+crea una nueva tabla de símbolos. Todas las tablas tienen una tabla padre, por lo que se puede regresar al scope padre.
+\\\\
+Las tablas utilizan los hashes de los símbolos. Si hay colisiones utiliza una lista para agregar varios símbolos al mismo hash.
+\\\\
+Los símbolos incluyen un nombre, un tipo y un contador de las veces que se accesa la variable. Tenemos una función lookup que 
+busca recursivamente los símbolos, por lo tanto tenemos overshadowing.
+
+\pagebreak
+
+\section{Manual de usuario}
+
+\subsection{Compilación}
+
+Para compilar el programa tenemos un Makefile. Lo único que es necesario hacer es entrar al Makefile y modificar las siguientes 
+variables: (\textbf{LEX}, \textbf{YACC}, \textbf{C}) y que apunten a los programas adecuados. Generalmente en sistemas unix van 
+a ser: (\textbf{flex}, \textbf{bison}, \textbf{gcc}).
+\\\\
+Una vez modificadas las variables, para compilar el programa utilizamos el comando: \textbf{make}.
+\\\\
+Para correr las pruebas del sistema utiliza el comando: \textbf{make test}.
+\\\\
+Para limpiar los ejecutables utiliza el comando: \textbf{make clean}.
+
+\subsection{Corrimiento programa}
+
+Lo anterior te va a generar un ejecutable llamado \textbf{cmm}. El comando recibe un sólo argumento, el nombre del archivo a 
+verificar. Por ejemplo, si queremos verificar el archivo \textbf{sampleProgram.cmm} se utilizaría el comando: 
+\textbf{./cmm sampleProgram.cmm}. El programa puede imprimir dos posibles opciones:
+\\\\
+\textbf{Expression accepted.}
+\\
+\textbf{Printing symbols table}
+\\\\
+Después de esto se va a imprimir la tabla de símbolos. El otro caso es:
+\\\\
+\textbf{Error: 'error aquí'}
+\\\\
+Se va a imprimir toda la lista de errores que se encontraron en el programa.
+
+\end{document}

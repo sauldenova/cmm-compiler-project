@@ -319,10 +319,10 @@ realsDef : expr COLON
          | realsDef expr COLON
          ;
 
-constant : sign DOUBLECONST {
+constant : DOUBLECONST {
                $$ = 'D';
            }
-         | sign INTCONST {
+         | INTCONST {
                $$ = 'I';
            }
          | BOOLCONST {
@@ -332,10 +332,6 @@ constant : sign DOUBLECONST {
                $$ = 'S';
            }
          ;
-
-sign : %empty
-     | SUB
-     ;
 
 scopeStart : %empty {
                  pushSymbolTable();
@@ -510,4 +506,5 @@ int main(int argc, char **argv) {
 int yyerror(char *s) {
     fprintf(stderr,"Error: %s\n", s);
     hasError = 1;
+    return 0;
 }
