@@ -13,14 +13,6 @@ struct t_symtab_list;
 /**
  * Structure definitions
  */
-// Defines a type expression
-struct t_typeexpr {
-    char t;
-    double d;
-    int i;
-    char* s;
-};
-
 // Defines a symbol
 struct t_symbol {
     char *n;
@@ -54,11 +46,13 @@ struct t_symbol* place;
 struct t_symtab* currSymTab;
 struct t_symtab* rootSymTab;
 int hasError;
+int lineNumber;
 
 /**
  * Functions
  */
 int areNumeric(char type1, char type2);
+struct t_symbol* createSymbol(char* name);
 struct t_symbol* lookup(char* name);
 struct t_typeexpr assignSymbol(struct t_symbol* sym, struct t_typeexpr expr);
 void pushSymbolTable();

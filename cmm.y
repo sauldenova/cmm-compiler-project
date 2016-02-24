@@ -1,9 +1,8 @@
 %{
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "cmm.h"
+
 extern FILE *yyin;
 %}
 
@@ -11,20 +10,12 @@ extern FILE *yyin;
 %define parse.error verbose
 
 %union {
-    struct t_typeexpr typeexpr;
     struct t_symbol symbol;
-    double d;
-    int i;
-    int b;
-    char t;
     char* id;
-    char* s;
+    char t;
 }
 
-%token <i> INTCONST
-%token <d> DOUBLECONST
-%token <i> BOOLCONST
-%token <s> STRINGCONST
+%token INTCONST DOUBLECONST BOOLCONST STRINGCONST
 %token VOID INT DOUBLE BOOL STRING WHILE FOR IF ELSE RETURN PRINT READINT READLINE
 %token ADD SUB MUL DIV MOD ASSIGN
 %token LESS LESSEQ GREATER GREATEREQ EQUAL NEQUAL
@@ -47,8 +38,9 @@ extern FILE *yyin;
 %nonassoc NOT
 %nonassoc "then"
 %nonassoc ELSE
+%nonassoc "usub"
+%nonassoc "uadd"
 
-%type <i> sign
 %type <t> type expr call constant optExpr
 %type <symbol> lValue
 
@@ -66,7 +58,7 @@ declVariable : variable SEMICOLON
              ;
 
 variable : type IDENTIFIER {
-               place = lookup($2);
+               place = createSymbol($2);
                place->t = $1;
            }
          ;
@@ -89,10 +81,12 @@ type : INT {
      ;
 
 declFunction : type IDENTIFIER scopeStart LPAREN formals RPAREN block scopeEnd {
-                   place = lookup($2); place->t = $1;
+                   place = createSymbol($2);
+                   place->t = $1;
                }
              | VOID IDENTIFIER scopeStart LPAREN formals RPAREN block scopeEnd {
-                   place = lookup($2); place->t = 'V';
+                   place = createSymbol($2);
+                   place->t = 'V';
                }
              ;
 
@@ -150,9 +144,9 @@ instrWhile : WHILE LPAREN expr RPAREN instr {
              }
            ;
 
-instrFor : FOR LPAREN optExpr SEMICOLON expr SEMICOLON optExpr RPAREN instr { 
+instrFor : FOR LPAREN optExpr SEMICOLON expr SEMICOLON optExpr RPAREN instr {
                if ($5 != 'B') {
-                   yyerror("Non-compatible types"); 
+                   yyerror("Non-compatible types");
                }
            }
          ;
@@ -192,98 +186,112 @@ expr : lValue ASSIGN expr {
            if (areNumeric($1, $3) != 0) {
                $$ = $1;
            } else {
-               yyerror("Non-compatible types: +");
+               yyerror("Non-compatible types: expr + expr");
            }
        }
      | expr SUB expr {
            if (areNumeric($1, $3) != 0) {
                $$ = $1;
            } else {
-               yyerror("Non-compatible types: -");
+               yyerror("Non-compatible types: expr - expr");
            }
        }
      | expr MUL expr {
            if (areNumeric($1, $3) != 0) {
                $$ = $1;
            } else {
-               yyerror("Non-compatible types: *");
+               yyerror("Non-compatible types: expr * expr");
            }
        }
      | expr DIV expr {
            if (areNumeric($1, $3) != 0) {
                $$ = $1;
            } else {
-               yyerror("Non-compatible types: /");
+               yyerror("Non-compatible types: expr / expr");
            }
        }
      | expr MOD expr {
            if ($1 == 'I' && $3 == 'I') {
                $$ = $1;
            } else {
-               yyerror("Non-compatible types: %");
+               yyerror("Non-compatible types: expr %% expr");
            }
        }
      | expr LESS expr {
            if (areNumeric($1, $3) != 0) {
                $$ = 'B';
            } else {
-               yyerror("Non-compatible types: <");
+               yyerror("Non-compatible types: expr < expr");
            }
        }
      | expr LESSEQ expr {
            if (areNumeric($1, $3) != 0) {
                $$ = 'B';
            } else {
-               yyerror("Non-compatible types: <=");
+               yyerror("Non-compatible types: expr <= expr");
            }
        }
      | expr GREATER expr {
            if (areNumeric($1, $3) != 0) {
                $$ = 'B';
            } else {
-               yyerror("Non-compatible types: >");
+               yyerror("Non-compatible types: expr > expr");
            }
        }
      | expr GREATEREQ expr {
            if (areNumeric($1, $3) != 0) {
                $$ = 'B';
            } else {
-               yyerror("Non-compatible types: >=");
+               yyerror("Non-compatible types: expr >= expr");
            }
        }
      | expr EQUAL expr {
            if (areNumeric($1, $3) != 0) {
                $$ = 'B';
            } else {
-               yyerror("Non-compatible types: ==");
+               yyerror("Non-compatible types: expr == expr");
            }
        }
      | expr NEQUAL expr {
            if (areNumeric($1, $3) != 0) {
                $$ = 'B';
            } else {
-               yyerror("Non-compatible types: !=");
+               yyerror("Non-compatible types: expr != expr");
            }
        }
      | expr AND expr {
            if ($1 == 'B' && $3 == 'B') {
                $$ = 'B';
            } else {
-               yyerror("Non-compatible types: &&");
+               yyerror("Non-compatible types: expr && expr");
            }
        }
      | expr OR expr {
            if ($1 == 'B' && $3 == 'B') {
                $$ = 'B';
            } else {
-               yyerror("Non-compatible types: ||");
+               yyerror("Non-compatible types: expr || expr");
            }
        }
      | NOT expr {
            if ($2 == 'B') {
                $$ = 'B';
            } else {
-               yyerror("Non-compatible types: !");
+               yyerror("Non-compatible types: ! expr");
+           }
+       }
+     | ADD expr %prec "uadd" {
+           if ($2 == 'I' || $2 == 'D') {
+               $$ = $2;
+           } else {
+               yyerror("Non-compatible types: + expr");
+           }
+       }
+     | SUB expr %prec "usub" {
+           if ($2 == 'I' || $2 == 'D') {
+               $$ = $2;
+           } else {
+               yyerror("Non-compatible types: - expr");
            }
        }
      | READINT LPAREN RPAREN {
@@ -345,144 +353,6 @@ scopeEnd : %empty {
 
 %%
 
-int areNumeric(char type1, char type2) {
-    if ((type1 == 'I' || type1 == 'D') && type1 == type2) {
-        return 1;
-    }
-
-    return 0;
-}
-
-static unsigned symhash(char *sym) {
-    unsigned int hash = 0;
-    unsigned c;
-
-    while((c = *sym++)) {
-        hash = hash * 9 ^ c;
-    }
-
-    return hash;
-}
-
-int nnew, nold;
-int nprobe;
-struct t_symbol* lookup(char* name) {
-    struct t_symtab* symtab = currSymTab;
-    struct t_symbol_list* symList;
-    while (symtab != NULL) {
-        symList = symtab->symbols[symhash(name) % NHASH];
-        if (symList != NULL) {
-            while (symList->next != NULL) {
-                if (strcmp(symList->symbol->n, name) == 0) {
-                    symList->symbol->count++;
-                    return symList->symbol;
-                }
-
-                symList = symList->next;
-            }
-
-            if (strcmp(symList->symbol->n, name) == 0) {
-                symList->symbol->count++;
-                return symList->symbol;
-            }
-        }
-
-        symtab = symtab->parent;
-    }
-
-    // Symbol wasn't found, therefore it doesn't exist
-    struct t_symbol* sym = malloc(sizeof(struct t_symbol));
-    sym->n = strdup(name);
-    sym->count = 1;
-
-    struct t_symbol_list* nextSymList = malloc(sizeof(struct t_symbol_list));
-    nextSymList->next = NULL;
-    nextSymList->symbol = sym;
-
-    if (symList != NULL) {
-        symList->next = nextSymList;
-    } else {
-        currSymTab->symbols[symhash(name) % NHASH] = nextSymList;
-    }
-
-    return sym;
-}
-
-void pushSymbolTable() {
-    // Create and set new symbol table
-    struct t_symtab* symTab = malloc(sizeof(struct t_symtab));
-    symTab->parent = currSymTab;
-
-    // Add to children list
-    struct t_symtab_list* newList = malloc(sizeof(struct t_symtab_list));
-    newList->elem = symTab;
-    newList->next = currSymTab->children;
-    currSymTab->children = newList;
-
-    // Set current symbol table as the new symbol table
-    currSymTab = symTab;
-}
-
-void popSymbolTable() {
-    currSymTab = currSymTab->parent;
-}
-
-void _traverseSymbolTable(struct t_symtab* symtab, int depth) {
-    for (int i = 0; i < depth; i++) {
-        printf("  ");
-    }
-    printf("Symbol table:\n");
-
-    for (int i = 0; i < depth; i++) {
-        printf("  ");
-    }
-    for (int i = 0; i < 47; i++) {
-        printf("-");
-    }
-    printf("\n");
-
-    for (int i = 0; i < NHASH; i++) {
-        for (struct t_symbol_list *idx = symtab->symbols[i]; idx != NULL; idx = idx->next) {
-            for (int i = 0; i < depth; i++) {
-                printf("  ");
-            }
-
-            printf("|Name: %-16s|Type: %c    |Count: %3d|\n",
-                   idx->symbol->n,
-                   idx->symbol->t,
-                   idx->symbol->count);
-        }
-    }
-
-    for (int i = 0; i < depth; i++) {
-        printf("  ");
-    }
-    for (int i = 0; i < 47; i++) {
-        printf("-");
-    }
-    printf("\n");
-
-    printf("\n");
-
-    for (struct t_symtab_list *idx = symtab->children; idx != NULL; idx = idx->next) {
-        _traverseSymbolTable(idx->elem, depth + 1);
-    }
-}
-
-void printSymbolTable() {
-    _traverseSymbolTable(rootSymTab, 0);
-}
-
-void initializeSymbolTable() {
-    // Create and set new symbol table
-    struct t_symtab* symTab = malloc(sizeof(struct t_symtab));
-    symTab->parent = NULL;
-
-    // Set the environment variables
-    currSymTab = symTab;
-    rootSymTab = symTab;
-}
-
 int main(int argc, char **argv) {
     if(argc > 1) {
         if(!(yyin = fopen(argv[1], "r"))) {
@@ -504,7 +374,7 @@ int main(int argc, char **argv) {
 }
 
 int yyerror(char *s) {
-    fprintf(stderr,"Error: %s\n", s);
+    fprintf(stderr,"%d> Error: %s\n", lineNumber, s);
     hasError = 1;
     return 0;
 }

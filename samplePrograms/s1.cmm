@@ -19,5 +19,16 @@ int main() {
     for (d = 1; c < d; d = d + 1) {
     }
 
+    d = +1;
+    d = -(0 + -1);
+    d = 0x09F;
+    d = 0X09F;
+
+    double e;
+
+    e = 10e-9;
+    e = 1.01E+10;
+    e = 1.000;
+
     print(a, b, c);
 }

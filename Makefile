@@ -20,7 +20,7 @@ test: all
 	-./cmm samplePrograms/s5.cmm
 
 cmm: lex.yy.c cmm.tab.c
-	$(C) $(C_FLAGS) $(C_DEBUG_FLAGS) -o cmm lex.yy.c cmm.tab.c
+	$(C) $(C_FLAGS) $(C_DEBUG_FLAGS) -o cmm lex.yy.c cmm.tab.c cmm.c
 
 lex.yy.c: cmm.l
 	$(LEX) $(LEX_FLAGS) cmm.l
