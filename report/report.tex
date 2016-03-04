@@ -68,6 +68,21 @@ $reals\,::=\,\epsilon\,|\,realsDefEnd$
 $realsDefEnd\,::=\,expr\,|\,realsDef\,expr$
 \\
 $realsDef\,::=\,expr\,,|\,realsDef\,expr\,,$
+\\\\
+Para finalizar, en las funciones se nos presentó un problema. Para poder asegurarnos que los tipos de los \textit{returns} fueran correctos tuvimos que cambiar la gramática de esto:
+\\\\
+$DeclFuncion\,::=\,Tipo\,identificador\,(Formales)\,BloqueInstr$
+\\
+$|\,void \,identificador\,(Formales)\,BloqueInstr$
+\\\\
+a:
+\\\\
+$DeclFuncion\,::=\,TipoFuncion\,(Formales)\,BloqueInstr$
+\\
+$TipoFuncion\,::=\,tipo\,identificador$
+$|\,void\,identificador$
+\\\\
+Este cambio puede parecer minúsculo, sin embargo, nos permite que la tabla de símbolos guarde el identificador de la función para ser usado en la función de abajo.
 
 \subsection{Tabla de símbolos}
 
@@ -89,8 +104,6 @@ Las tablas utilizan los hashes de los símbolos. Si hay colisiones utiliza una l
 Los símbolos incluyen un nombre, un tipo y un contador de las veces que se accesa la variable. Tenemos una función lookup que 
 busca recursivamente los símbolos, por lo tanto tenemos overshadowing.
 
-\pagebreak
-
 \section{Manual de usuario}
 
 \subsection{Compilación}
@@ -99,7 +112,9 @@ Para compilar el programa tenemos un Makefile. Lo único que es necesario hacer 
 variables: (\textbf{LEX}, \textbf{YACC}, \textbf{C}) y que apunten a los programas adecuados. Generalmente en sistemas unix van 
 a ser: (\textbf{flex}, \textbf{bison}, \textbf{gcc}).
 \\\\
-Una vez modificadas las variables, para compilar el programa utilizamos el comando: \textbf{make}.
+El comando \textbf{make} o \textbf{make help} muestran la documentación correspondiente de las opciones de make.
+\\\\
+Una vez modificadas las variables, para compilar el programa utilizamos el comando: \textbf{make build}.
 \\\\
 Para correr las pruebas del sistema utiliza el comando: \textbf{make test}.
 \\\\

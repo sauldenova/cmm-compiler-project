@@ -6,18 +6,22 @@ C = clang
 C_FLAGS = -ll -ly -g -Wno-implicit-function-declaration
 C_DEBUG_FLAGS = -D DEBUG
 
-all: cmm
+.PHONY: help
+.DEFAULT_GOAL := help
 
-clean:
+build: cmm ## Compiles all the files for the executable
+
+clean: ## Cleans the directory from the intermediate files
 	-rm cmm lex.yy.c cmm.tab.c cmm.tab.h
 	-rm -rf cmm.dSYM
 
-test: all
+test: build ## Runs all the tests from the test suite
 	./cmm samplePrograms/s1.cmm
 	./cmm samplePrograms/s2.cmm
 	./cmm samplePrograms/s3.cmm
 	-./cmm samplePrograms/s4.cmm
 	-./cmm samplePrograms/s5.cmm
+	-./cmm samplePrograms/s6.cmm
 
 cmm: lex.yy.c cmm.tab.c
 	$(C) $(C_FLAGS) $(C_DEBUG_FLAGS) -o cmm lex.yy.c cmm.tab.c cmm.c
@@ -27,3 +31,6 @@ lex.yy.c: cmm.l
 
 cmm.tab.c: cmm.y
 	$(YACC) $(YACC_FLAGS) cmm.y
+
+help: ## Display this help text
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

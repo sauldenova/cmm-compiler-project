@@ -1,13 +1,11 @@
-int function(int a, int b) {
+double function(int a, int b) {
     if (a == b) {
+        double c;
         return a;
     } else {
         return b;
     }
-}
-
-void voidFunction() {
-    return;
+    c = 10.0;
 }
 
 int main() {
@@ -18,6 +16,10 @@ int main() {
     d = 1;
     while (c < d) {
         d = d + 1;
+    }
+
+    {
+        int f;
     }
 
     for (d = 1; c < d; d = d + 1) {
@@ -33,6 +35,8 @@ int main() {
     e = 10e-9;
     e = 1.01E+10;
     e = 1.000;
+
+    f = 1;
 
     print(a, b, c);
 }

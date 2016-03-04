@@ -77,8 +77,10 @@ struct t_symbol* lookup(char* name) {
     }
 
     // Symbol wasn't found, therefore it doesn't exist
-    yyerror("Symbol wasn't found");
-    exit(1);
+    char str[100];
+    sprintf(str, "Symbol %s wasn't found", name);
+    yyerror(&str);
+    return NULL;
 }
 
 void pushSymbolTable() {

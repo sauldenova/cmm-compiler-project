@@ -43,6 +43,7 @@ struct t_symtab_list {
  * Variables
  */
 struct t_symbol* place;
+struct t_symbol* currentFunction;
 struct t_symtab* currSymTab;
 struct t_symtab* rootSymTab;
 int hasError;

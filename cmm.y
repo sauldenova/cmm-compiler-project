@@ -10,7 +10,7 @@ extern FILE *yyin;
 %define parse.error verbose
 
 %union {
-    struct t_symbol symbol;
+    struct t_symbol* symbol;
     char* id;
     char t;
 }
@@ -80,15 +80,19 @@ type : INT {
        }
      ;
 
-declFunction : type IDENTIFIER scopeStart LPAREN formals RPAREN block scopeEnd {
-                   place = createSymbol($2);
-                   place->t = $1;
-               }
-             | VOID IDENTIFIER scopeStart LPAREN formals RPAREN block scopeEnd {
-                   place = createSymbol($2);
-                   place->t = 'V';
-               }
-             ;
+declFunction : declFunctionType scopeStart LPAREN formals RPAREN block scopeEnd;
+
+declFunctionType : type IDENTIFIER {
+                       place = createSymbol($2);
+                       place->t = $1;
+                       currentFunction = place;
+                   }
+                 | VOID IDENTIFIER {
+                       place = createSymbol($2);
+                       place->t = 'V';
+                       currentFunction = place;
+                   }
+                 ;
 
 formals : %empty
          | formalsDefEnd
@@ -110,7 +114,9 @@ blockDef : %empty
          | blockDef instr
          ;
 
-optExpr : %empty
+optExpr : %empty {
+              $$ = 'V';
+          }
         | expr {
               $$ = $1;
           }
@@ -118,15 +124,15 @@ optExpr : %empty
 
 instr : SEMICOLON
       | expr SEMICOLON
-      | scopeStart instrIf scopeEnd
+      | instrIf
       | scopeStart instrWhile scopeEnd
       | scopeStart instrFor scopeEnd
       | instrReturn
       | instrPrint
-      | block
+      | scopeStart block scopeEnd
       ;
 
-instrIf : IF LPAREN expr RPAREN instr instrElse {
+instrIf : IF LPAREN expr RPAREN scopeStart instr scopeEnd instrElse {
               if ($3 != 'B') {
                   yyerror("Non-compatible types: if");
               }
@@ -134,7 +140,7 @@ instrIf : IF LPAREN expr RPAREN instr instrElse {
         ;
 
 instrElse : %empty %prec "then"
-          | ELSE instr
+          | ELSE scopeStart instr scopeEnd
           ;
 
 instrWhile : WHILE LPAREN expr RPAREN instr {
@@ -151,7 +157,11 @@ instrFor : FOR LPAREN optExpr SEMICOLON expr SEMICOLON optExpr RPAREN instr {
            }
          ;
 
-instrReturn : RETURN optExpr SEMICOLON
+instrReturn : RETURN optExpr SEMICOLON {
+                  if ($2 != currentFunction->t) {
+                      yyerror("Invalid return function type");
+                  }
+              }
             ;
 
 instrPrint : PRINT LPAREN instrPrintDefEnd RPAREN SEMICOLON
@@ -166,7 +176,7 @@ instrPrintDef : expr COLON
               ;
 
 expr : lValue ASSIGN expr {
-           if ($1.t != $3) {
+           if ($1 != NULL && $1->t != $3) {
                yyerror("Non-compatible types: =");
            }
        }
@@ -174,7 +184,7 @@ expr : lValue ASSIGN expr {
            $$ = $1;
        }
      | lValue {
-           $$ = $1.t;
+           $$ = ($1 == NULL ? '\0' : $1->t);
        }
      | call {
            $$ = $1;
@@ -303,15 +313,18 @@ expr : lValue ASSIGN expr {
      ;
 
 lValue : IDENTIFIER {
-             $$ = *lookup($1);
+             place = lookup($1);
+             $$ = (place == NULL ? NULL : place);
          }
        | IDENTIFIER LBRACKET expr RBRACKET {
-             $$ = *lookup($1);
+             place = lookup($1);
+             $$ = (place == NULL ? NULL : place);
          }
        ;
 
 call : IDENTIFIER LPAREN reals RPAREN {
-           $$ = lookup($1)->t;
+           place = lookup($1);
+           $$ = (place == NULL ? '\0' : place->t);
        }
      ;
 
