@@ -12,6 +12,7 @@ extern FILE *yyin;
 
 %union {
     struct t_symbol* symbol;
+    struct t_arguments_list* args;
     char* id;
     char t;
 }
@@ -42,8 +43,9 @@ extern FILE *yyin;
 %nonassoc "usub"
 %nonassoc "uadd"
 
-%type <t> type expr call constant optExpr baseType
+%type <t> type expr call constant optExpr baseType variable declFunctionType
 %type <symbol> lValue
+%type <args> reals realsDef realsDefEnd formals formalsDef formalsDefEnd
 
 %%
 
@@ -61,6 +63,7 @@ declVariable : variable SEMICOLON
 variable : type IDENTIFIER {
                place = createSymbol($2);
                place->t = $1;
+               $$ = $1;
            }
          ;
 
@@ -86,7 +89,10 @@ baseType : INT {
            }
          ;
 
-declFunction : declFunctionType scopeStart LPAREN formals RPAREN block scopeEnd;
+declFunction : declFunctionType scopeStart LPAREN formals RPAREN scopeStart block scopeEnd scopeEnd {
+                   currentFunction->arguments = $4;
+               }
+             ;
 
 declFunctionType : type IDENTIFIER {
                        place = createSymbol($2);
@@ -100,16 +106,40 @@ declFunctionType : type IDENTIFIER {
                    }
                  ;
 
-formals : %empty
-         | formalsDefEnd
-         ;
+formals : %empty {
+              $$ = NULL;
+          }
+        | formalsDefEnd {
+              $$ = $1;
+          }
+        ;
 
-formalsDefEnd : variable
-              | formalsDef variable
+formalsDefEnd : variable {
+                    struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
+                    arguments->next = NULL;
+                    arguments->type = $1;
+                    $$ = arguments;
+                }
+              | formalsDef variable {
+                    struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
+                    arguments->next = $1;
+                    arguments->type = $2;
+                    $$ = arguments;
+                }
               ;
 
-formalsDef : variable COLON
-           | formalsDef variable COLON
+formalsDef : variable COLON {
+                 struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
+                 arguments->next = NULL;
+                 arguments->type = $1;
+                 $$ = arguments;
+             }
+           | formalsDef variable COLON {
+                 struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
+                 arguments->next = $1;
+                 arguments->type = $2;
+                 $$ = arguments;
+             }
            ;
 
 block : LBRACE blockDef RBRACE
@@ -330,20 +360,49 @@ lValue : IDENTIFIER {
 
 call : IDENTIFIER LPAREN reals RPAREN {
            place = lookup($1);
+           if (!verifyArguments(place->arguments, $3)) {
+               char str[100];
+               sprintf(str, "Incorrect argument types for call to %s", $1);
+               yyerror(&str);
+           }
            $$ = (place == NULL ? INVALID_TYPE : place->t - START_FUNCTION_TYPE);
        }
      ;
 
-reals : %empty
-      | realsDefEnd
+reals : %empty {
+            $$ = NULL;
+        }
+      | realsDefEnd {
+            $$ = $1;
+        }
       ;
 
-realsDefEnd : expr
-            | realsDef expr
+realsDefEnd : expr {
+                  struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
+                  arguments->next = NULL;
+                  arguments->type = $1;
+                  $$ = arguments;
+              }
+            | realsDef expr {
+                  struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
+                  arguments->next = $1;
+                  arguments->type = $2;
+                  $$ = arguments;
+              }
             ;
 
-realsDef : expr COLON
-         | realsDef expr COLON
+realsDef : expr COLON {
+               struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
+               arguments->next = NULL;
+               arguments->type = $1;
+               $$ = arguments;
+           }
+         | realsDef expr COLON {
+               struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
+               arguments->next = $1;
+               arguments->type = $2;
+               $$ = arguments;
+           }
          ;
 
 constant : DOUBLECONST {
@@ -393,7 +452,7 @@ int main(int argc, char **argv) {
 }
 
 int yyerror(char *s) {
-    fprintf(stderr,"%d> Error: %s\n", lineNumber, s);
+    fprintf(stderr,"%d> Error: %s\n", lineNumber + 1, s);
     hasError = 1;
     return 0;
 }

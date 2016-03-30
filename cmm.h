@@ -1,18 +1,12 @@
 #ifndef __CMM_H__
 #define __CMM_H__
 
+#include "cmm_types.h"
+
 /**
  * Constant definitions
  */
 #define NHASH   10000
-
-/**
- * Type definitions
- */
-#define FALSE   0
-#define TRUE    1
-
-typedef char cmm_bool;
 
 /**
  * Forward declarations
@@ -22,11 +16,18 @@ struct t_symtab_list;
 /**
  * Structure definitions
  */
+// Defines an argument list
+struct t_arguments_list {
+    struct t_arguments_list* next;
+    t_type type;
+};
+
 // Defines a symbol
 struct t_symbol {
     char *n;
     char t;
     int count;
+    struct t_arguments_list* arguments;
 };
 
 // Defines a symbol list for the symbol table
@@ -56,12 +57,12 @@ struct t_symbol* currentFunction;
 struct t_symtab* currSymTab;
 struct t_symtab* rootSymTab;
 int lineNumber;
-cmm_bool hasError;
+t_bool hasError;
 
 /**
  * Functions
  */
-cmm_bool areNumeric(char type1, char type2);
+t_bool areNumeric(char type1, char type2);
 struct t_symbol* createSymbol(char* name);
 struct t_symbol* lookup(char* name);
 struct t_typeexpr assignSymbol(struct t_symbol* sym, struct t_typeexpr expr);

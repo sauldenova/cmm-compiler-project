@@ -8,7 +8,7 @@
 int nnew, nold;
 int nprobe;
 
-cmm_bool areNumeric(char type1, char type2) {
+t_bool areNumeric(char type1, char type2) {
     return ((type1 == INT_TYPE || type1 == DOUBLE_TYPE) && type1 == type2);
 }
 
@@ -119,9 +119,9 @@ void _traverseSymbolTable(struct t_symtab* symtab, int depth) {
                 printf("  ");
             }
 
-            printf("|Name: %-16s|Type: %c    |Count: %3d|\n",
+            printf("|Name: %-16s|Type: %-3s  |Count: %3d|\n",
                    idx->symbol->n,
-                   idx->symbol->t,
+                   convertType(idx->symbol->t),
                    idx->symbol->count);
         }
     }
@@ -143,6 +143,18 @@ void _traverseSymbolTable(struct t_symtab* symtab, int depth) {
 
 void printSymbolTable() {
     _traverseSymbolTable(rootSymTab, 0);
+}
+
+t_bool verifyArguments(struct t_arguments_list* args1, struct t_arguments_list* args2) {
+    while(args1 != NULL && args2 != NULL) {
+        if (args1->type != args2->type) {
+            return FALSE;
+        }
+        args1 = args1->next;
+        args2 = args2->next;
+    }
+
+    return (args1 == NULL && args2 == NULL);
 }
 
 void initializeSymbolTable() {

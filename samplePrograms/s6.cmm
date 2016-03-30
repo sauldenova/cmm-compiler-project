@@ -12,7 +12,7 @@ int main() {
     int a; int b; int c; int d;
     a = readint();
     b = readint();
-    c = function(a, b);
+    c = function();
     d = 1;
     while (c < d) {
         d = d + 1;

@@ -1,7 +1,11 @@
 #ifndef __CMM_TYPES_H__
 #define __CMM_TYPES_H__
 
-typedef char cmm_type;
+typedef char t_type;
+typedef char t_bool;
+
+#define TRUE 0
+#define FALSE 1
 
 // Define types
 #define INT_TYPE                0
@@ -36,7 +40,11 @@ typedef char cmm_type;
 // Define the invalid type
 #define INVALID_TYPE 255
 
-cmm_bool isTypeArray(cmm_type);
-cmm_bool isTypeFunction(cmm_type);
+/**
+ * Function definitions
+ */
+t_bool isTypeArray(t_type);
+t_bool isTypeFunction(t_type);
+const char* convertType(t_type);
 
-#endif
+#endif // __CMM_TYPES_H__
