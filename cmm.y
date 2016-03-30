@@ -42,7 +42,7 @@ extern FILE *yyin;
 %nonassoc "usub"
 %nonassoc "uadd"
 
-%type <t> type expr call constant optExpr
+%type <t> type expr call constant optExpr baseType
 %type <symbol> lValue
 
 %%
@@ -64,22 +64,27 @@ variable : type IDENTIFIER {
            }
          ;
 
-type : INT {
-           $$ = INT_TYPE;
-       }
-     | DOUBLE {
-           $$ = DOUBLE_TYPE;
-       }
-     | BOOL {
-           $$ = BOOL_TYPE;
+type : baseType {
+           $$ = $1;
        }
      | STRING LBRACKET INTCONST RBRACKET {
            $$ = STRING_TYPE;
        }
-     | type LBRACKET INTCONST RBRACKET {
+     | baseType LBRACKET INTCONST RBRACKET {
            $$ = $1 + START_ARRAY_TYPE;
        }
      ;
+
+baseType : INT {
+               $$ = INT_TYPE;
+           }
+         | DOUBLE {
+               $$ = DOUBLE_TYPE;
+           }
+         | BOOL {
+               $$ = BOOL_TYPE;
+           }
+         ;
 
 declFunction : declFunctionType scopeStart LPAREN formals RPAREN block scopeEnd;
 
