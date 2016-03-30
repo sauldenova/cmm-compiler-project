@@ -24,7 +24,7 @@ test: build ## Runs all the tests from the test suite
 	-./cmm samplePrograms/s6.cmm
 
 cmm: lex.yy.c cmm.tab.c
-	$(C) $(C_FLAGS) $(C_DEBUG_FLAGS) -o cmm lex.yy.c cmm.tab.c cmm.c
+	$(C) $(C_FLAGS) $(C_DEBUG_FLAGS) -o cmm lex.yy.c cmm.tab.c cmm.c cmm_types.c
 
 lex.yy.c: cmm.l
 	$(LEX) $(LEX_FLAGS) cmm.l

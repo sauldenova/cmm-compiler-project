@@ -3,16 +3,13 @@
 #include <string.h>
 
 #include "cmm.h"
+#include "cmm_types.h"
 
 int nnew, nold;
 int nprobe;
 
-int areNumeric(char type1, char type2) {
-    if ((type1 == 'I' || type1 == 'D') && type1 == type2) {
-        return 1;
-    }
-
-    return 0;
+cmm_bool areNumeric(char type1, char type2) {
+    return ((type1 == INT_TYPE || type1 == DOUBLE_TYPE) && type1 == type2);
 }
 
 static unsigned symhash(char *sym) {

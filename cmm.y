@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "cmm.h"
+#include "cmm_types.h"
 
 extern FILE *yyin;
 %}
@@ -64,19 +65,19 @@ variable : type IDENTIFIER {
          ;
 
 type : INT {
-           $$ = 'I';
+           $$ = INT_TYPE;
        }
      | DOUBLE {
-           $$ = 'D';
+           $$ = DOUBLE_TYPE;
        }
      | BOOL {
-           $$ = 'B';
+           $$ = BOOL_TYPE;
        }
      | STRING LBRACKET INTCONST RBRACKET {
-           $$ = 'S';
+           $$ = STRING_TYPE;
        }
      | type LBRACKET INTCONST RBRACKET {
-           $$ = 'A';
+           $$ = $1 + START_ARRAY_TYPE;
        }
      ;
 
@@ -84,12 +85,12 @@ declFunction : declFunctionType scopeStart LPAREN formals RPAREN block scopeEnd;
 
 declFunctionType : type IDENTIFIER {
                        place = createSymbol($2);
-                       place->t = $1;
+                       place->t = $1 + START_FUNCTION_TYPE;
                        currentFunction = place;
                    }
                  | VOID IDENTIFIER {
                        place = createSymbol($2);
-                       place->t = 'V';
+                       place->t = VOID_FUNCTION_TYPE;
                        currentFunction = place;
                    }
                  ;
@@ -115,7 +116,7 @@ blockDef : %empty
          ;
 
 optExpr : %empty {
-              $$ = 'V';
+              $$ = VOID_TYPE;
           }
         | expr {
               $$ = $1;
@@ -133,7 +134,7 @@ instr : SEMICOLON
       ;
 
 instrIf : IF LPAREN expr RPAREN scopeStart instr scopeEnd instrElse {
-              if ($3 != 'B') {
+              if ($3 != BOOL_TYPE) {
                   yyerror("Non-compatible types: if");
               }
           }
@@ -144,21 +145,21 @@ instrElse : %empty %prec "then"
           ;
 
 instrWhile : WHILE LPAREN expr RPAREN instr {
-                 if ($3 != 'B') {
+                 if ($3 != BOOL_TYPE) {
                      yyerror("Non-compatible types: while");
                  }
              }
            ;
 
 instrFor : FOR LPAREN optExpr SEMICOLON expr SEMICOLON optExpr RPAREN instr {
-               if ($5 != 'B') {
+               if ($5 != BOOL_TYPE) {
                    yyerror("Non-compatible types");
                }
            }
          ;
 
 instrReturn : RETURN optExpr SEMICOLON {
-                  if ($2 != currentFunction->t) {
+                  if ($2 != currentFunction->t - START_FUNCTION_TYPE) {
                       yyerror("Invalid return function type");
                   }
               }
@@ -193,122 +194,122 @@ expr : lValue ASSIGN expr {
            $$ = $2;
        }
      | expr ADD expr {
-           if (areNumeric($1, $3) != 0) {
+           if (areNumeric($1, $3)) {
                $$ = $1;
            } else {
                yyerror("Non-compatible types: expr + expr");
            }
        }
      | expr SUB expr {
-           if (areNumeric($1, $3) != 0) {
+           if (areNumeric($1, $3)) {
                $$ = $1;
            } else {
                yyerror("Non-compatible types: expr - expr");
            }
        }
      | expr MUL expr {
-           if (areNumeric($1, $3) != 0) {
+           if (areNumeric($1, $3)) {
                $$ = $1;
            } else {
                yyerror("Non-compatible types: expr * expr");
            }
        }
      | expr DIV expr {
-           if (areNumeric($1, $3) != 0) {
+           if (areNumeric($1, $3)) {
                $$ = $1;
            } else {
                yyerror("Non-compatible types: expr / expr");
            }
        }
      | expr MOD expr {
-           if ($1 == 'I' && $3 == 'I') {
+           if ($1 == INT_TYPE && $3 == INT_TYPE) {
                $$ = $1;
            } else {
                yyerror("Non-compatible types: expr %% expr");
            }
        }
      | expr LESS expr {
-           if (areNumeric($1, $3) != 0) {
-               $$ = 'B';
+           if (areNumeric($1, $3)) {
+               $$ = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr < expr");
            }
        }
      | expr LESSEQ expr {
-           if (areNumeric($1, $3) != 0) {
-               $$ = 'B';
+           if (areNumeric($1, $3)) {
+               $$ = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr <= expr");
            }
        }
      | expr GREATER expr {
-           if (areNumeric($1, $3) != 0) {
-               $$ = 'B';
+           if (areNumeric($1, $3)) {
+               $$ = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr > expr");
            }
        }
      | expr GREATEREQ expr {
-           if (areNumeric($1, $3) != 0) {
-               $$ = 'B';
+           if (areNumeric($1, $3)) {
+               $$ = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr >= expr");
            }
        }
      | expr EQUAL expr {
-           if (areNumeric($1, $3) != 0) {
-               $$ = 'B';
+           if (areNumeric($1, $3)) {
+               $$ = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr == expr");
            }
        }
      | expr NEQUAL expr {
-           if (areNumeric($1, $3) != 0) {
-               $$ = 'B';
+           if (areNumeric($1, $3)) {
+               $$ = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr != expr");
            }
        }
      | expr AND expr {
-           if ($1 == 'B' && $3 == 'B') {
-               $$ = 'B';
+           if ($1 == BOOL_TYPE && $3 == BOOL_TYPE) {
+               $$ = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr && expr");
            }
        }
      | expr OR expr {
-           if ($1 == 'B' && $3 == 'B') {
-               $$ = 'B';
+           if ($1 == BOOL_TYPE && $3 == BOOL_TYPE) {
+               $$ = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr || expr");
            }
        }
      | NOT expr {
-           if ($2 == 'B') {
-               $$ = 'B';
+           if ($2 == BOOL_TYPE) {
+               $$ = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: ! expr");
            }
        }
      | ADD expr %prec "uadd" {
-           if ($2 == 'I' || $2 == 'D') {
+           if ($2 == INT_TYPE || $2 == DOUBLE_TYPE) {
                $$ = $2;
            } else {
                yyerror("Non-compatible types: + expr");
            }
        }
      | SUB expr %prec "usub" {
-           if ($2 == 'I' || $2 == 'D') {
+           if ($2 == INT_TYPE || $2 == DOUBLE_TYPE) {
                $$ = $2;
            } else {
                yyerror("Non-compatible types: - expr");
            }
        }
      | READINT LPAREN RPAREN {
-           $$ = 'I';
+           $$ = INT_TYPE;
        }
      | READLINE LPAREN RPAREN {
-           $$ = 'S';
+           $$ = STRING_TYPE;
        }
      ;
 
@@ -324,7 +325,7 @@ lValue : IDENTIFIER {
 
 call : IDENTIFIER LPAREN reals RPAREN {
            place = lookup($1);
-           $$ = (place == NULL ? '\0' : place->t);
+           $$ = (place == NULL ? INVALID_TYPE : place->t - START_FUNCTION_TYPE);
        }
      ;
 
@@ -341,16 +342,16 @@ realsDef : expr COLON
          ;
 
 constant : DOUBLECONST {
-               $$ = 'D';
+               $$ = DOUBLE_TYPE;
            }
          | INTCONST {
-               $$ = 'I';
+               $$ = INT_TYPE;
            }
          | BOOLCONST {
-               $$ = 'B';
+               $$ = BOOL_TYPE;
            }
          | STRINGCONST {
-               $$ = 'S';
+               $$ = STRING_TYPE;
            }
          ;
 

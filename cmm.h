@@ -1,9 +1,18 @@
-#ifndef __CMM_H_
-#define __CMM_H_
+#ifndef __CMM_H__
+#define __CMM_H__
+
 /**
  * Constant definitions
  */
-#define NHASH 10000
+#define NHASH   10000
+
+/**
+ * Type definitions
+ */
+#define FALSE   0
+#define TRUE    1
+
+typedef char cmm_bool;
 
 /**
  * Forward declarations
@@ -46,17 +55,17 @@ struct t_symbol* place;
 struct t_symbol* currentFunction;
 struct t_symtab* currSymTab;
 struct t_symtab* rootSymTab;
-int hasError;
 int lineNumber;
+cmm_bool hasError;
 
 /**
  * Functions
  */
-int areNumeric(char type1, char type2);
+cmm_bool areNumeric(char type1, char type2);
 struct t_symbol* createSymbol(char* name);
 struct t_symbol* lookup(char* name);
 struct t_typeexpr assignSymbol(struct t_symbol* sym, struct t_typeexpr expr);
 void pushSymbolTable();
 void popSymbolTable();
-#endif
+#endif // __CMM_H__
 
