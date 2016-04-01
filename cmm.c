@@ -7,6 +7,10 @@
 
 int nnew, nold;
 int nprobe;
+int temporalCount;
+int labelCount;
+int nextStat;
+char* resultingCode[1000];
 
 t_bool areNumeric(char type1, char type2) {
     return ((type1 == INT_TYPE || type1 == DOUBLE_TYPE) && type1 == type2);
@@ -165,5 +169,27 @@ void initializeSymbolTable() {
     // Set the environment variables
     currSymTab = symTab;
     rootSymTab = symTab;
+}
+
+char* createTemporal() {
+    char* temporal = malloc(5 * sizeof(char));
+    sprintf(temporal, "t%d", temporalCount++);
+    return temporal;
+}
+
+char* createLabel() {
+    char* temporal = malloc(7 * sizeof(char));
+    sprintf(temporal, "lab%d", labelCount++);
+    return temporal;
+}
+
+void emit(char* code) {
+    resultingCode[nextStat++] = strdup(code);
+}
+
+void writeCodeToFile(FILE* outputFile) {
+    for(int i = 0; i < nextStat; i++) {
+        fprintf(outputFile, "%s\n", resultingCode[i]);
+    }
 }
 

@@ -1,6 +1,8 @@
 #ifndef __CMM_H__
 #define __CMM_H__
 
+#include <stdio.h>
+
 #include "cmm_types.h"
 
 /**
@@ -16,6 +18,10 @@ struct t_symtab_list;
 /**
  * Structure definitions
  */
+struct t_instr {
+    t_type type;
+};
+
 // Defines an argument list
 struct t_arguments_list {
     struct t_arguments_list* next;
@@ -68,5 +74,10 @@ struct t_symbol* lookup(char* name);
 struct t_typeexpr assignSymbol(struct t_symbol* sym, struct t_typeexpr expr);
 void pushSymbolTable();
 void popSymbolTable();
+void emit(char* code);
+void writeCodeToFile(FILE* outputFile);
+char* createTemporal();
+char* createLabel();
+
 #endif // __CMM_H__
 

@@ -11,6 +11,7 @@ extern FILE *yyin;
 %define parse.error verbose
 
 %union {
+    struct t_instr* instr;
     struct t_symbol* symbol;
     struct t_arguments_list* args;
     char* id;
@@ -43,7 +44,8 @@ extern FILE *yyin;
 %nonassoc "usub"
 %nonassoc "uadd"
 
-%type <t> type expr call constant optExpr baseType variable declFunctionType
+%type <t> type baseType declFunctionType
+%type <instr> expr optExpr call constant variable
 %type <symbol> lValue
 %type <args> reals realsDef realsDefEnd formals formalsDef formalsDefEnd
 
@@ -63,7 +65,8 @@ declVariable : variable SEMICOLON
 variable : type IDENTIFIER {
                place = createSymbol($2);
                place->t = $1;
-               $$ = $1;
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = $1;
            }
          ;
 
@@ -117,13 +120,13 @@ formals : %empty {
 formalsDefEnd : variable {
                     struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
                     arguments->next = NULL;
-                    arguments->type = $1;
+                    arguments->type = $1->type;
                     $$ = arguments;
                 }
               | formalsDef variable {
                     struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
                     arguments->next = $1;
-                    arguments->type = $2;
+                    arguments->type = $2->type;
                     $$ = arguments;
                 }
               ;
@@ -131,13 +134,13 @@ formalsDefEnd : variable {
 formalsDef : variable COLON {
                  struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
                  arguments->next = NULL;
-                 arguments->type = $1;
+                 arguments->type = $1->type;
                  $$ = arguments;
              }
            | formalsDef variable COLON {
                  struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
                  arguments->next = $1;
-                 arguments->type = $2;
+                 arguments->type = $2->type;
                  $$ = arguments;
              }
            ;
@@ -151,7 +154,8 @@ blockDef : %empty
          ;
 
 optExpr : %empty {
-              $$ = VOID_TYPE;
+              $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+              $$->type = VOID_TYPE;
           }
         | expr {
               $$ = $1;
@@ -169,7 +173,7 @@ instr : SEMICOLON
       ;
 
 instrIf : IF LPAREN expr RPAREN scopeStart instr scopeEnd instrElse {
-              if ($3 != BOOL_TYPE) {
+              if ($3->type != BOOL_TYPE) {
                   yyerror("Non-compatible types: if");
               }
           }
@@ -180,21 +184,21 @@ instrElse : %empty %prec "then"
           ;
 
 instrWhile : WHILE LPAREN expr RPAREN instr {
-                 if ($3 != BOOL_TYPE) {
+                 if ($3->type != BOOL_TYPE) {
                      yyerror("Non-compatible types: while");
                  }
              }
            ;
 
 instrFor : FOR LPAREN optExpr SEMICOLON expr SEMICOLON optExpr RPAREN instr {
-               if ($5 != BOOL_TYPE) {
+               if ($5->type != BOOL_TYPE) {
                    yyerror("Non-compatible types");
                }
            }
          ;
 
 instrReturn : RETURN optExpr SEMICOLON {
-                  if ($2 != currentFunction->t - START_FUNCTION_TYPE) {
+                  if ($2->type != currentFunction->t - START_FUNCTION_TYPE) {
                       yyerror("Invalid return function type");
                   }
               }
@@ -212,7 +216,7 @@ instrPrintDef : expr COLON
               ;
 
 expr : lValue ASSIGN expr {
-           if ($1 != NULL && $1->t != $3) {
+           if ($1 != NULL && $1->t != $3->type) {
                yyerror("Non-compatible types: =");
            }
        }
@@ -220,7 +224,8 @@ expr : lValue ASSIGN expr {
            $$ = $1;
        }
      | lValue {
-           $$ = ($1 == NULL ? '\0' : $1->t);
+           $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+           $$->type = ($1 == NULL ? '\0' : $1->t);
        }
      | call {
            $$ = $1;
@@ -229,122 +234,133 @@ expr : lValue ASSIGN expr {
            $$ = $2;
        }
      | expr ADD expr {
-           if (areNumeric($1, $3)) {
+           if (areNumeric($1->type, $3->type)) {
                $$ = $1;
            } else {
                yyerror("Non-compatible types: expr + expr");
            }
        }
      | expr SUB expr {
-           if (areNumeric($1, $3)) {
+           if (areNumeric($1->type, $3->type)) {
                $$ = $1;
            } else {
                yyerror("Non-compatible types: expr - expr");
            }
        }
      | expr MUL expr {
-           if (areNumeric($1, $3)) {
+           if (areNumeric($1->type, $3->type)) {
                $$ = $1;
            } else {
                yyerror("Non-compatible types: expr * expr");
            }
        }
      | expr DIV expr {
-           if (areNumeric($1, $3)) {
+           if (areNumeric($1->type, $3->type)) {
                $$ = $1;
            } else {
                yyerror("Non-compatible types: expr / expr");
            }
        }
      | expr MOD expr {
-           if ($1 == INT_TYPE && $3 == INT_TYPE) {
+           if ($1->type == INT_TYPE && $3->type == INT_TYPE) {
                $$ = $1;
            } else {
                yyerror("Non-compatible types: expr %% expr");
            }
        }
      | expr LESS expr {
-           if (areNumeric($1, $3)) {
-               $$ = BOOL_TYPE;
+           if (areNumeric($1->type, $3->type)) {
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr < expr");
            }
        }
      | expr LESSEQ expr {
-           if (areNumeric($1, $3)) {
-               $$ = BOOL_TYPE;
+           if (areNumeric($1->type, $3->type)) {
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr <= expr");
            }
        }
      | expr GREATER expr {
-           if (areNumeric($1, $3)) {
-               $$ = BOOL_TYPE;
+           if (areNumeric($1->type, $3->type)) {
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr > expr");
            }
        }
      | expr GREATEREQ expr {
-           if (areNumeric($1, $3)) {
-               $$ = BOOL_TYPE;
+           if (areNumeric($1->type, $3->type)) {
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr >= expr");
            }
        }
      | expr EQUAL expr {
-           if (areNumeric($1, $3)) {
-               $$ = BOOL_TYPE;
+           if (areNumeric($1->type, $3->type)) {
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr == expr");
            }
        }
      | expr NEQUAL expr {
-           if (areNumeric($1, $3)) {
-               $$ = BOOL_TYPE;
+           if (areNumeric($1->type, $3->type)) {
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr != expr");
            }
        }
      | expr AND expr {
-           if ($1 == BOOL_TYPE && $3 == BOOL_TYPE) {
-               $$ = BOOL_TYPE;
+           if ($1->type == BOOL_TYPE && $3->type == BOOL_TYPE) {
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr && expr");
            }
        }
      | expr OR expr {
-           if ($1 == BOOL_TYPE && $3 == BOOL_TYPE) {
-               $$ = BOOL_TYPE;
+           if ($1->type == BOOL_TYPE && $3->type == BOOL_TYPE) {
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: expr || expr");
            }
        }
      | NOT expr {
-           if ($2 == BOOL_TYPE) {
-               $$ = BOOL_TYPE;
+           if ($2->type == BOOL_TYPE) {
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = BOOL_TYPE;
            } else {
                yyerror("Non-compatible types: ! expr");
            }
        }
      | ADD expr %prec "uadd" {
-           if ($2 == INT_TYPE || $2 == DOUBLE_TYPE) {
+           if ($2->type == INT_TYPE || $2->type == DOUBLE_TYPE) {
                $$ = $2;
            } else {
                yyerror("Non-compatible types: + expr");
            }
        }
      | SUB expr %prec "usub" {
-           if ($2 == INT_TYPE || $2 == DOUBLE_TYPE) {
+           if ($2->type == INT_TYPE || $2->type == DOUBLE_TYPE) {
                $$ = $2;
            } else {
                yyerror("Non-compatible types: - expr");
            }
        }
      | READINT LPAREN RPAREN {
-           $$ = INT_TYPE;
+           $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+           $$->type = INT_TYPE;
        }
      | READLINE LPAREN RPAREN {
-           $$ = STRING_TYPE;
+           $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+           $$->type = STRING_TYPE;
        }
      ;
 
@@ -365,7 +381,8 @@ call : IDENTIFIER LPAREN reals RPAREN {
                sprintf(str, "Incorrect argument types for call to %s", $1);
                yyerror(&str);
            }
-           $$ = (place == NULL ? INVALID_TYPE : place->t - START_FUNCTION_TYPE);
+           $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+           $$->type = (place == NULL ? INVALID_TYPE : place->t - START_FUNCTION_TYPE);
        }
      ;
 
@@ -380,13 +397,13 @@ reals : %empty {
 realsDefEnd : expr {
                   struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
                   arguments->next = NULL;
-                  arguments->type = $1;
+                  arguments->type = $1->type;
                   $$ = arguments;
               }
             | realsDef expr {
                   struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
                   arguments->next = $1;
-                  arguments->type = $2;
+                  arguments->type = $2->type;
                   $$ = arguments;
               }
             ;
@@ -394,28 +411,32 @@ realsDefEnd : expr {
 realsDef : expr COLON {
                struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
                arguments->next = NULL;
-               arguments->type = $1;
+               arguments->type = $1->type;
                $$ = arguments;
            }
          | realsDef expr COLON {
                struct t_arguments_list* arguments = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list*));
                arguments->next = $1;
-               arguments->type = $2;
+               arguments->type = $2->type;
                $$ = arguments;
            }
          ;
 
 constant : DOUBLECONST {
-               $$ = DOUBLE_TYPE;
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = DOUBLE_TYPE;
            }
          | INTCONST {
-               $$ = INT_TYPE;
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = INT_TYPE;
            }
          | BOOLCONST {
-               $$ = BOOL_TYPE;
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = BOOL_TYPE;
            }
          | STRINGCONST {
-               $$ = STRING_TYPE;
+               $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+               $$->type = STRING_TYPE;
            }
          ;
 
