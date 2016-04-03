@@ -27,9 +27,12 @@
 "if"                                { return(IF); }
 "else"                              { return(ELSE); }
 "return"                            { return(RETURN); }
-"print"                             { return(PRINT); }
-"readint"                           { return(READINT); }
-"readline"                          { return(READLINE); }
+"printString"                       { return(PRINTSTRING); }
+"printInt"                          { return(PRINTINT); }
+"printDouble"                       { return(PRINTDOUBLE); }
+"readInt"                           { return(READINT); }
+"readDouble"                        { return(READDOUBLE); }
+"readLine"                          { return(READLINE); }
 "true"                              { return(BOOLCONST); }
 "false"                             { return(BOOLCONST); }
 "+"                                 { return(ADD); }
@@ -59,10 +62,18 @@
                                       return(STRINGCONST);
                                     }
 ["][^\n"]*[\n]                      { yyerror("Unfinished string"); lineNumber++; }
-[0-9]+\.[0-9]+                      { return(DOUBLECONST); }
-[0-9]+[\.]?[0-9]*[eE][-+]?[0-9]+    { return(DOUBLECONST); }
-[0][xX][0-9A-Fa-f]+                 { return(INTCONST); }
-[0-9]+                              { return(INTCONST); }
+[0-9]+\.[0-9]+                      { yylval.val = strdup(yytext);
+                                      return(DOUBLECONST);
+                                    }
+[0-9]+[\.]?[0-9]*[eE][-+]?[0-9]+    { yylval.val = strdup(yytext);
+                                      return(DOUBLECONST);
+                                    }
+[0][xX][0-9A-Fa-f]+                 { yylval.val = strdup(yytext);
+                                      return(INTCONST);
+                                    }
+[0-9]+                              { yylval.val = strdup(yytext);
+                                      return(INTCONST);
+                                    }
 [a-zA-Z][a-zA-Z0-9_]*               { if (strlen(yytext) > 31) {
                                           yyerror("Variable length exceeds the limit of 31 characters");
                                       } else {

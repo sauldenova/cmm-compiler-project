@@ -1,4 +1,5 @@
 int function() {
     string[100] a;
     a = "This is a constant string";
+    printString(a);
 }

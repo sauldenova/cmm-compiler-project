@@ -20,6 +20,7 @@ struct t_symtab_list;
  */
 struct t_instr {
     t_type type;
+    char* addr;
 };
 
 // Defines an argument list

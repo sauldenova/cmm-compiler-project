@@ -12,7 +12,7 @@ C_DEBUG_FLAGS = -D DEBUG
 build: cmm ## Compiles all the files for the executable
 
 clean: ## Cleans the directory from the intermediate files
-	-rm cmm lex.yy.c cmm.tab.c cmm.tab.h
+	-rm cmm lex.yy.c cmm.tab.c cmm.tab.h program.ll
 	-rm -rf cmm.dSYM
 
 test: build ## Runs all the tests from the test suite

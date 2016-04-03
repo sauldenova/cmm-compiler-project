@@ -10,8 +10,8 @@ double function(int a, int b) {
 
 int main() {
     int a; int b; int c; int d;
-    a = readint();
-    b = readint();
+    a = readInt();
+    b = readInt();
     c = function();
     d = 1;
     while (c < d) {
@@ -38,5 +38,7 @@ int main() {
 
     f = 1;
 
-    print(a, b, c);
+    printInt(a);
+    printInt(b);
+    printInt(c);
 }

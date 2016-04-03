@@ -15,11 +15,12 @@ extern FILE *yyin;
     struct t_symbol* symbol;
     struct t_arguments_list* args;
     char* id;
+    char* val;
     char t;
 }
 
-%token INTCONST DOUBLECONST BOOLCONST STRINGCONST
-%token VOID INT DOUBLE BOOL STRING WHILE FOR IF ELSE RETURN PRINT READINT READLINE
+%token <val> INTCONST DOUBLECONST BOOLCONST STRINGCONST
+%token VOID INT DOUBLE BOOL STRING WHILE FOR IF ELSE RETURN PRINTINT PRINTSTRING PRINTDOUBLE READINT READLINE READDOUBLE
 %token ADD SUB MUL DIV MOD ASSIGN
 %token LESS LESSEQ GREATER GREATEREQ EQUAL NEQUAL
 %token AND OR NOT
@@ -204,16 +205,22 @@ instrReturn : RETURN optExpr SEMICOLON {
               }
             ;
 
-instrPrint : PRINT LPAREN instrPrintDefEnd RPAREN SEMICOLON
+instrPrint : PRINTDOUBLE LPAREN expr RPAREN SEMICOLON {
+                 if ($3->type != DOUBLE_TYPE) {
+                     yyerror("Non-double arguments in printDouble expression");
+                 }
+             }
+           | PRINTINT LPAREN expr RPAREN SEMICOLON {
+                 if ($3->type != INT_TYPE) {
+                     yyerror("Non-int arguments in printInt expression");
+                 }
+             }
+           | PRINTSTRING LPAREN expr RPAREN SEMICOLON {
+                 if ($3->type != STRING_TYPE) {
+                     yyerror("Non-string arguments in printString expression");
+                 }
+             }
            ;
-
-instrPrintDefEnd : expr
-                 | instrPrintDef expr
-                 ;
-
-instrPrintDef : expr COLON
-              | instrPrintDef expr COLON
-              ;
 
 expr : lValue ASSIGN expr {
            if ($1 != NULL && $1->t != $3->type) {
@@ -358,6 +365,10 @@ expr : lValue ASSIGN expr {
            $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
            $$->type = INT_TYPE;
        }
+     | READDOUBLE LPAREN RPAREN {
+           $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
+           $$->type = DOUBLE_TYPE;
+       }
      | READLINE LPAREN RPAREN {
            $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
            $$->type = STRING_TYPE;
@@ -425,18 +436,22 @@ realsDef : expr COLON {
 constant : DOUBLECONST {
                $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
                $$->type = DOUBLE_TYPE;
+               $$->addr = $1;
            }
          | INTCONST {
                $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
                $$->type = INT_TYPE;
+               $$->addr = $1;
            }
          | BOOLCONST {
                $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
                $$->type = BOOL_TYPE;
+               $$->addr = $1;
            }
          | STRINGCONST {
                $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
                $$->type = STRING_TYPE;
+               $$->addr = $1;
            }
          ;
 
@@ -463,11 +478,21 @@ int main(int argc, char **argv) {
     initializeSymbolTable();
 
     yyparse();
-    if (hasError != 0) {
+    if (hasError) {
         return 1;
     } else {
-        printf("Expression accepted\nPrinting symbols table\n");
+        #ifdef _DEBUG
+        printf("Expression accepted\n");
+        printf("Printing symbols table\n");
         printSymbolTable();
+        #endif //_DEBUG
+
+        FILE* input = fopen("program.ll", "w");
+
+        writeCodeToFile(input);
+
+        fclose(input);
+
         return 0;
     }
 }

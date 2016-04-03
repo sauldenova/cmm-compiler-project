@@ -12,8 +12,8 @@ void voidFunction() {
 
 int main() {
     int a; int b; int c; int d;
-    a = readint();
-    b = readint();
+    a = readInt();
+    b = readInt();
     c = function(a, b);
     d = 1;
     while (c < d) {
@@ -34,5 +34,7 @@ int main() {
     e = 1.01E+10;
     e = 1.000;
 
-    print(a, b, c);
+    printInt(a);
+    printInt(b);
+    printInt(c);
 }

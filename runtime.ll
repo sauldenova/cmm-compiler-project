@@ -2,6 +2,7 @@
 @fnl = internal constant [6 x i8] c"%.1f\0A\00"
 @d   = internal constant [3 x i8] c"%d\00"
 @lf  = internal constant [4 x i8] c"%lf\00"
+@s   = internal constant [4 x i8] c"%s\0A\00"
 
 declare i32 @printf(i8*, ...)
 declare i32 @scanf(i8*, ...)
@@ -38,4 +39,12 @@ entry:  %res = alloca double
         call i32 (i8*, ...)* @scanf(i8* %t1, double* %res)
         %t2 = load double* %res
         ret double %t2
+}
+
+define i8* @readLine() {
+entry:  %res = alloca i8*
+        %t1 = getelementptr [4 x i8]* @s, i32 0, i32 0
+        call i32 (i8*, ...)* @scanf(i8* %t1, i8** %res)
+        %t2 = load i8** %res
+        ret i8* %t2
 }
