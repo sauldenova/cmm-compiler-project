@@ -1,17 +1,18 @@
+C = clang
 LEX = /usr/local/Cellar/flex/2.6.0/bin/flex
 YACC = /usr/local/Cellar/bison/3.0.4/bin/bison
-LEX_FLAGS =
-YACC_FLAGS = -d -Wno-other
-C = clang
-C_FLAGS = -ll -ly -g -Wno-implicit-function-declaration
-C_DEBUG_FLAGS = -D DEBUG
 LLVM_AS = /usr/local/Cellar/llvm/3.6.2/bin/llvm-as
 LLVM_LINK = /usr/local/Cellar/llvm/3.6.2/bin/llvm-link
-LLVM_LINK_FLAGS = -o main.bc
 LLVM_OPT = /usr/local/Cellar/llvm/3.6.2/bin/opt
-LLVM_OPT_FLAGS = -std-link-opts
 LLVM_LLI = /usr/local/Cellar/llvm/3.6.2/bin/lli
 LLVM_LLC = /usr/local/Cellar/llvm/3.6.2/bin/llc
+
+LEX_FLAGS =
+YACC_FLAGS = -d -Wno-other
+C_FLAGS = -ll -ly -g -Wno-implicit-function-declaration
+C_DEBUG_FLAGS = -D DEBUG
+LLVM_LINK_FLAGS = -o main.bc
+LLVM_OPT_FLAGS = -std-link-opts
 LLVM_LLC_FLAGS = -filetype=obj
 
 .PHONY: help
@@ -32,7 +33,6 @@ test: build ## Runs all the tests from the test suite
 	-./cmm samplePrograms/s5.cmm
 	-./cmm samplePrograms/s6.cmm
 	./cmm samplePrograms/s7.cmm
-	cat program.ll
 	$(LLVM_AS) program.ll
 	$(LLVM_AS) runtime.ll
 	$(LLVM_LINK) program.bc runtime.bc $(LLVM_LINK_FLAGS)

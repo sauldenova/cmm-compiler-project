@@ -23,6 +23,7 @@ int main() {
     }
 
     for (d = 1; c < d; d = d + 1) {
+        a = 1;
     }
 
     d = +1;

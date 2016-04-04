@@ -364,9 +364,53 @@ instrWhileEnd : %empty {
                 }
               ;
 
-instrFor : FOR LPAREN optExpr instrWhileStart SEMICOLON instrWhileCond SEMICOLON optExpr RPAREN instr instrWhileEnd {
+instrFor : FOR LPAREN optExpr instrForStart SEMICOLON instrForCond SEMICOLON optExpr RPAREN instrForLabel instr instrForEnd {
            }
          ;
+
+instrForStart : %empty {
+                    char* str = (char*)malloc(sizeof(char) * 50);
+                    startLabel = createLabel();
+                    label1 = createLabel();
+                    label2 = createLabel();
+                    endLabel = createLabel();
+                    sprintf(str, "\t\tbr label %%%s", startLabel);
+                    emit(str);
+                    sprintf(str, "%s:", startLabel);
+                    emit(str);
+                }
+              ;
+
+instrForCond : expr {
+                   if ($1->type != BOOL_TYPE) {
+                       yyerror("Non-compatible types: for");
+                   } else {
+                       char* str = (char*)malloc(sizeof(char) * 50);
+                       sprintf(str, "\t\tbr i1 %s , label %%%s , label %%%s", $1->addr, label1, endLabel);
+                       emit(str);
+                       sprintf(str, "%s:", label2);
+                       emit(str);
+                   }
+               }
+             ;
+
+instrForLabel : %empty {
+                    char* str = (char*)malloc(sizeof(char) * 50);
+                    sprintf(str, "\t\tbr label %s", startLabel);
+                    emit(str);
+                    sprintf(str, "%s:", label1);
+                    emit(str);
+                }
+              ;
+
+instrForEnd : %empty {
+                  char* str = (char*)malloc(sizeof(char) * 50);
+                  sprintf(str, "\t\tbr label %%%s", label2);
+                  emit(str);
+                  sprintf(str, "%s:", endLabel);
+                  emit(str);
+              }
+            ;
 
 instrReturn : RETURN optExpr SEMICOLON {
                   if ($2->type != currentFunction->t - START_FUNCTION_TYPE) {
@@ -415,14 +459,16 @@ instrPrint : PRINTDOUBLE LPAREN expr RPAREN SEMICOLON {
            ;
 
 expr : lValue ASSIGN expr {
-           if ($1 != NULL && $1->t != $3->type) {
-               yyerror("Non-compatible types: =");
-           } else {
-               char* str = (char*)malloc(sizeof(char) * 50);
-               const char* type = transformType($1->t);
-               sprintf(str, "\t\tstore %s %s , %s* %%%s", type, $3->addr, type, $1->n);
-               emit(str);
-               $$ = $3;
+           if ($1 != NULL) {
+               if ($1->t != $3->type) {
+                   yyerror("Non-compatible types: =");
+               } else {
+                   char* str = (char*)malloc(sizeof(char) * 50);
+                   const char* type = transformType($1->t);
+                   sprintf(str, "\t\tstore %s %s , %s* %%%s", type, $3->addr, type, $1->n);
+                   emit(str);
+                   $$ = $3;
+               }
            }
        }
      | constant {
