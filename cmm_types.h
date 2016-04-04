@@ -43,8 +43,9 @@ typedef char t_bool;
 /**
  * Function definitions
  */
-t_bool isTypeArray(t_type);
-t_bool isTypeFunction(t_type);
-const char* convertType(t_type);
+t_bool isTypeArray(t_type type);
+t_bool isTypeFunction(t_type type);
+const char* convertType(t_type type);
+const char* transformType(t_type type);
 
 #endif // __CMM_TYPES_H__

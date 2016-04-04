@@ -2,4 +2,6 @@ int main() {
     string[1000] a;
     a = "fdsafdsafsdafdasfdsa \
             ";
+
+    return 0;
 }

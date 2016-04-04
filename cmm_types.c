@@ -4,9 +4,11 @@
 t_bool isTypeArray(t_type type) {
     return (INT_ARRAY_TYPE <= type && type < INT_FUNCTION_TYPE);
 }
+
 t_bool isTypeFunction(t_type type) {
     return (INT_FUNCTION_TYPE <= type);
 }
+
 const char* convertType(t_type type) {
     switch(type) {
         case INT_TYPE:
@@ -46,3 +48,24 @@ const char* convertType(t_type type) {
     }
 }
 
+const char* transformType(t_type type) {
+    switch(type) {
+        case INT_FUNCTION_TYPE:
+        case INT_TYPE:
+            return "i32";
+        case BOOL_FUNCTION_TYPE:
+        case BOOL_TYPE:
+            return "i1";
+        case DOUBLE_FUNCTION_TYPE:
+        case DOUBLE_TYPE:
+            return "double";
+        case STRING_FUNCTION_TYPE:
+        case STRING_TYPE:
+            return "i8*";
+        case VOID_FUNCTION_TYPE:
+        case VOID_TYPE:
+            return "void";
+        default:
+            return "";
+    }
+}

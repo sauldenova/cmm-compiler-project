@@ -33,8 +33,12 @@
 "readInt"                           { return(READINT); }
 "readDouble"                        { return(READDOUBLE); }
 "readLine"                          { return(READLINE); }
-"true"                              { return(BOOLCONST); }
-"false"                             { return(BOOLCONST); }
+"true"                              { yylval.val = strdup(yytext);
+                                      return(BOOLCONST);
+                                    }
+"false"                             { yylval.val = strdup(yytext);
+                                      return(BOOLCONST);
+                                    }
 "+"                                 { return(ADD); }
 "-"                                 { return(SUB); }
 "*"                                 { return(MUL); }
@@ -62,13 +66,25 @@
                                       return(STRINGCONST);
                                     }
 ["][^\n"]*[\n]                      { yyerror("Unfinished string"); lineNumber++; }
-[0-9]+\.[0-9]+                      { yylval.val = strdup(yytext);
+[0-9]+\.[0-9]+                      { char* res = (char*)malloc(sizeof(char) * 100);
+                                      double f = strtod(yytext, NULL);
+                                      sprintf(res, "%#16llx", *( (long long*) &f ));
+                                      yylval.val = strdup(res);
+                                      free(res);
                                       return(DOUBLECONST);
                                     }
-[0-9]+[\.]?[0-9]*[eE][-+]?[0-9]+    { yylval.val = strdup(yytext);
+[0-9]+[\.]?[0-9]*[eE][-+]?[0-9]+    { char* res = (char*)malloc(sizeof(char) * 100);
+                                      double f = strtod(yytext, NULL);
+                                      sprintf(res, "%#16llx", *( (long long*) &f ));
+                                      yylval.val = strdup(res);
+                                      free(res);
                                       return(DOUBLECONST);
                                     }
-[0][xX][0-9A-Fa-f]+                 { yylval.val = strdup(yytext);
+[0][xX][0-9A-Fa-f]+                 { char* res = (char*)malloc(sizeof(char) * 50);
+                                      long int val = strtol(yytext, NULL, 16);
+                                      sprintf(res, "%ld", val);
+                                      yylval.val = strdup(res);
+                                      free(res);
                                       return(INTCONST);
                                     }
 [0-9]+                              { yylval.val = strdup(yytext);

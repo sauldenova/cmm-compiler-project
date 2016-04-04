@@ -34,7 +34,13 @@ int main() {
     e = 1.01E+10;
     e = 1.000;
 
+    bool f;
+    f = true;
+    f = !f;
+
     printInt(a);
     printInt(b);
     printInt(c);
+
+    return 0;
 }

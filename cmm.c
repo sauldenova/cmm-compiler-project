@@ -173,7 +173,7 @@ void initializeSymbolTable() {
 
 char* createTemporal() {
     char* temporal = malloc(5 * sizeof(char));
-    sprintf(temporal, "t%d", temporalCount++);
+    sprintf(temporal, "%%t%d", temporalCount++);
     return temporal;
 }
 

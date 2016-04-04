@@ -18,15 +18,16 @@ struct t_symtab_list;
 /**
  * Structure definitions
  */
-struct t_instr {
-    t_type type;
-    char* addr;
-};
-
 // Defines an argument list
 struct t_arguments_list {
     struct t_arguments_list* next;
     t_type type;
+};
+
+struct t_instr {
+    t_type type;
+    char* addr;
+    struct t_arguments_list* args;
 };
 
 // Defines a symbol
@@ -34,6 +35,7 @@ struct t_symbol {
     char *n;
     char t;
     int count;
+    int returnCount;
     struct t_arguments_list* arguments;
 };
 

@@ -22,4 +22,6 @@ int main() {
     printInt(a);
     printInt(b);
     printInt(c);
+
+    return 0;
 }
