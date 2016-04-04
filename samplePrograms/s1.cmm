@@ -4,6 +4,8 @@ int function(int a, int b) {
     } else {
         return b;
     }
+
+    return a;
 }
 
 void voidFunction() {
@@ -24,7 +26,9 @@ int main() {
     }
 
     d = +1;
-    d = -(0 + -1);
+    if (d == 1) {
+        d = -(0 + -1);
+    }
     d = 0x09F;
     d = 0X09F;
 

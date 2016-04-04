@@ -277,28 +277,94 @@ instr : SEMICOLON
       | scopeStart block scopeEnd
       ;
 
-instrIf : IF LPAREN expr RPAREN scopeStart instr scopeEnd instrElse {
-              if ($3->type != BOOL_TYPE) {
-                  yyerror("Non-compatible types: if");
-              }
+instrIf : IF LPAREN instrIfCond RPAREN scopeStart instr scopeEnd instrIfEnd %prec "then" {
+          }
+        | IF LPAREN instrIfCond RPAREN scopeStart instr scopeEnd instrIfElse ELSE scopeStart instr scopeEnd instrIfElseEnd {
           }
         ;
 
-instrElse : %empty %prec "then"
-          | ELSE scopeStart instr scopeEnd
-          ;
+instrIfCond : expr {
+                  if ($1->type != BOOL_TYPE) {
+                      yyerror("Non-compatible types: if");
+                  } else {
+                      char* str = (char*)malloc(sizeof(char) * 50);
+                      label1 = createLabel();
+                      label2 = createLabel();
+                      endLabel = createLabel();
+                      sprintf(str, "\t\tbr i1 %s, label %%%s, label %%%s", $1->addr, label1, label2);
+                      emit(str);
+                      sprintf(str, "%s:", label1);
+                      emit(str);
+                  }
+              }
+            ;
 
-instrWhile : WHILE LPAREN expr RPAREN instr {
-                 if ($3->type != BOOL_TYPE) {
-                     yyerror("Non-compatible types: while");
-                 }
+instrIfElse : %empty {
+                  char* str = (char*)malloc(sizeof(char) * 50);
+                  sprintf(str, "\t\tbr label %%%s", endLabel);
+                  emit(str);
+                  sprintf(str, "%s:", label2);
+                  emit(str);
+              }
+            ;
+
+instrIfEnd : %empty {
+                 char* str = (char*)malloc(sizeof(char) * 50);
+                 sprintf(str, "\t\tbr label %%%s", label2);
+                 emit(str);
+                 sprintf(str, "%s:", label2);
+                 emit(str);
              }
            ;
 
-instrFor : FOR LPAREN optExpr SEMICOLON expr SEMICOLON optExpr RPAREN instr {
-               if ($5->type != BOOL_TYPE) {
-                   yyerror("Non-compatible types");
-               }
+instrIfElseEnd : %empty {
+                     char* str = (char*)malloc(sizeof(char) * 50);
+                     sprintf(str, "\t\tbr label %%%s", endLabel);
+                     emit(str);
+                     sprintf(str, "%s:", endLabel);
+                     emit(str);
+                 }
+               ;
+
+instrWhile : instrWhileStart WHILE LPAREN instrWhileCond RPAREN instr instrWhileEnd {
+             }
+           ;
+
+instrWhileStart : %empty {
+                      char* str = (char*)malloc(sizeof(char) * 50);
+                      startLabel = createLabel();
+                      label1 = createLabel();
+                      endLabel = createLabel();
+                      sprintf(str, "\t\tbr label %%%s", startLabel);
+                      emit(str);
+                      sprintf(str, "%s:", startLabel);
+                      emit(str);
+                  }
+                ;
+
+instrWhileCond : expr {
+                     if ($1->type != BOOL_TYPE) {
+                         yyerror("Non-compatible types: while");
+                     } else {
+                         char* str = (char*)malloc(sizeof(char) * 50);
+                         sprintf(str, "\t\tbr i1 %s , label %%%s , label %%%s", $1->addr, label1, endLabel);
+                         emit(str);
+                         sprintf(str, "%s:", label1);
+                         emit(str);
+                     }
+                 }
+               ;
+
+instrWhileEnd : %empty {
+                    char* str = (char*)malloc(sizeof(char) * 50);
+                    sprintf(str, "\t\tbr label %%%s", startLabel);
+                    emit(str);
+                    sprintf(str, "%s:", endLabel);
+                    emit(str);
+                }
+              ;
+
+instrFor : FOR LPAREN optExpr instrWhileStart SEMICOLON instrWhileCond SEMICOLON optExpr RPAREN instr instrWhileEnd {
            }
          ;
 
@@ -361,14 +427,6 @@ expr : lValue ASSIGN expr {
        }
      | constant {
            $$ = $1;
-           /*char* str = (char*)malloc(sizeof(char) * 50);
-           char* temp = createTemporal();
-           sprintf(str, "\t\t%s = %s", temp, $1->addr);
-           emit(str);
-
-           $$ = (struct t_instr*)malloc(sizeof(struct t_instr*));
-           $$->type = $1->type;
-           $$->addr = temp;//*/
        }
      | lValue {
            char* str = (char*)malloc(sizeof(char) * 100);

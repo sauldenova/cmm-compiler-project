@@ -67,6 +67,10 @@ struct t_symtab* currSymTab;
 struct t_symtab* rootSymTab;
 int lineNumber;
 t_bool hasError;
+char* startLabel;
+char* label1;
+char* label2;
+char* endLabel;
 
 /**
  * Functions
