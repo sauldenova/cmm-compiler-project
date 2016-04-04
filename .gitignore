@@ -102,3 +102,5 @@ cmm.output
 compiler.zip
 program.ll
 *.bc
+*.s
+*.o
