@@ -1,34 +1,102 @@
-#!/usr/bin/perl
+#!/usr/bin/python
 
-use 5.18.2;
-use strict;
-use warnings;
+from __future__ import print_function
+from distutils.spawn import find_executable
 
-my $clang = "clang";
-my $rm = "rm";
-my $llvm_as = "/usr/local/Cellar/llvm/3.6.2/bin/llvm-as";
-my $llvm_link = "/usr/local/Cellar/llvm/3.6.2/bin/llvm-link";
-my $llvm_opt = "/usr/local/Cellar/llvm/3.6.2/bin/opt";
-my $llvm_llc = "/usr/local/Cellar/llvm/3.6.2/bin/llc";
+import argparse
+import subprocess
+import sys
+import os.path
 
-my $llvm_link_flags = "-o=main.bc";
-my $llvm_opt_flags = "-std-link-opts";
-my $llvm_llc_flags_asm = "-filetype=asm";
-my $llvm_llc_flags_obj = "-filetype=obj";
+def warning(*objs):
+    print("Warning: ", *objs, file=sys.stderr)
 
-my $source_file = $ARGV[0];
+def error(*objs):
+    print("Error: ", *objs, file=sys.stderr)
+    sys.exit(1)
 
-my $output = `./cmmFront $source_file`;
-die "$!" if $?;
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Compiler for the cmm language. Currently uses an LLVM backend.')
 
-system($llvm_as, "program.ll");
-system($llvm_as, "runtime.ll");
+    parser.add_argument('-o', dest='output', type=argparse.FileType('w'),
+                        default='a.out', metavar='output',
+                        help='The output destination file. By default this value is a.out')
 
-system($llvm_link, $llvm_link_flags, "program.bc", "runtime.bc");
+    parser.add_argument('source', type=argparse.FileType('r'), nargs=1,
+                        help='The source file to be compiled')
 
-open(my $main_opt, ">", "main_opt.bc");
-print $main_opt `$llvm_opt $llvm_opt_flags main.bc`;
+    return parser.parse_args()
 
-system($llvm_llc, $llvm_llc_flags_obj, "main_opt.bc");
-`$clang main_opt.o 2>&1`;
-system($rm, "main_opt.bc", "main.bc", "main_opt.o", "program.bc", "runtime.bc");
+def find_tools():
+    clang = find_executable('clang')
+    if not clang:
+        clang = find_executable('gcc')
+        if not clang:
+            error('Neither gcc not clang where found, please install any of them')
+
+    rm = find_executable('rm')
+    if not rm:
+        error('Executable rm not found, please make sure you\'re in a *nix system')
+
+    llvm_as = find_executable('llvm-as')
+    if not llvm_as:
+        if not os.path.isfile('/usr/local/Cellar/llvm/3.6.2/bin/llvm-as'):
+            error('LLVM suite not found, please install')
+        llvm_as = '/usr/local/Cellar/llvm/3.6.2/bin/llvm-as'
+
+    llvm_link = find_executable('llvm-link')
+    if not llvm_link:
+        llvm_link = '/usr/local/Cellar/llvm/3.6.2/bin/llvm-link'
+
+    llvm_opt = find_executable('opt')
+    if not llvm_opt:
+        llvm_opt = '/usr/local/Cellar/llvm/3.6.2/bin/opt'
+
+    llvm_llc = find_executable('llc')
+    if not llvm_llc:
+        llvm_llc = '/usr/local/Cellar/llvm/3.6.2/bin/llc'
+
+    cmm_front = os.path.abspath('./cmmFront')
+    if not os.path.isfile(cmm_front):
+        error('CMM front is not built, please build the project before continuing')
+
+    return (clang, rm, llvm_as, llvm_link, llvm_opt, llvm_llc, cmm_front)
+
+def main():
+    args = parse_arguments()
+
+    clang, rm, llvm_as, llvm_link, llvm_opt, llvm_llc, cmm_front = find_tools()
+
+    source_file = args.source[0]
+    output_file = args.output
+
+    source_file.close()
+    output_file.close()
+
+    llvm_link_flags = '-o=main.bc'
+    llvm_opt_flags = '-std-link-opts'
+    llvm_llc_flags = '-filetype=obj'
+
+    return_code = subprocess.call([cmm_front, source_file.name])
+    if return_code != 0:
+        exit(1)
+
+    subprocess.call([llvm_as, 'program.ll'])
+    subprocess.call([llvm_as, 'runtime.ll'])
+    subprocess.call([llvm_link, llvm_link_flags, 'program.bc', 'runtime.bc'])
+
+    with open('main_opt.bc', 'w') as main_opt:
+        subprocess.call([llvm_opt, llvm_opt_flags, 'main.bc'], stdout=main_opt)
+
+    subprocess.call([llvm_llc, llvm_llc_flags, 'main_opt.bc'])
+
+    clang_flags = '-o' + output_file.name
+    subprocess.call([clang, clang_flags, 'main_opt.o'])
+    subprocess.call([rm, 'program.bc', 'runtime.bc', 'main.bc', 'main_opt.bc', 'main_opt.o'])
+
+    return
+
+# If we are running in a console environment
+if __name__ == '__main__':
+    main()
+
