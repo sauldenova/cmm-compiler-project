@@ -61,6 +61,7 @@ struct t_symtab_list {
 /**
  * Variables
  */
+char str[200];
 struct t_symbol* place;
 struct t_symbol* currentFunction;
 struct t_symtab* currSymTab;
@@ -82,9 +83,13 @@ struct t_typeexpr assignSymbol(struct t_symbol* sym, struct t_typeexpr expr);
 void pushSymbolTable();
 void popSymbolTable();
 void emit(char* code);
+void emitHeader();
 void writeCodeToFile(FILE* outputFile);
 char* createTemporal();
 char* createLabel();
+struct t_instr* allocateInstr();
+struct t_arguments_list* allocateArgumentsList();
+char* allocateString(int size);
 
 #endif // __CMM_H__
 

@@ -1,0 +1,34 @@
+#!/usr/bin/perl
+
+use 5.18.2;
+use strict;
+use warnings;
+
+my $clang = "clang";
+my $rm = "rm";
+my $llvm_as = "/usr/local/Cellar/llvm/3.6.2/bin/llvm-as";
+my $llvm_link = "/usr/local/Cellar/llvm/3.6.2/bin/llvm-link";
+my $llvm_opt = "/usr/local/Cellar/llvm/3.6.2/bin/opt";
+my $llvm_llc = "/usr/local/Cellar/llvm/3.6.2/bin/llc";
+
+my $llvm_link_flags = "-o=main.bc";
+my $llvm_opt_flags = "-std-link-opts";
+my $llvm_llc_flags_asm = "-filetype=asm";
+my $llvm_llc_flags_obj = "-filetype=obj";
+
+my $source_file = $ARGV[0];
+
+my $output = `./cmmFront $source_file`;
+die "$!" if $?;
+
+system($llvm_as, "program.ll");
+system($llvm_as, "runtime.ll");
+
+system($llvm_link, $llvm_link_flags, "program.bc", "runtime.bc");
+
+open(my $main_opt, ">", "main_opt.bc");
+print $main_opt `$llvm_opt $llvm_opt_flags main.bc`;
+
+system($llvm_llc, $llvm_llc_flags_obj, "main_opt.bc");
+`$clang main_opt.o 2>&1`;
+system($rm, "main_opt.bc", "main.bc", "main_opt.o", "program.bc", "runtime.bc");

@@ -93,9 +93,9 @@ $RECYCLE.BIN/
 .Trash-*
 
 ### Project specifics ###
-cmm
+cmmFront
 cmm.tab.*
-cmm.dSYM/
+cmmFront.dSYM/
 lex.yy.c
 cmm.output
 .texpadtmp/

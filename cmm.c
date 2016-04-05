@@ -193,3 +193,24 @@ void writeCodeToFile(FILE* outputFile) {
     }
 }
 
+struct t_instr* allocateInstr() {
+    return (struct t_instr*)malloc(sizeof(struct t_instr));
+}
+
+struct t_arguments_list* allocateArgumentsList() {
+    return (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list));
+}
+
+char* allocateString(int size) {
+    return (char *)malloc(sizeof(char) * size);
+}
+
+void emitHeader() {
+    emit("declare void @printInt(i32)");
+    emit("declare void @printDouble(double)");
+    emit("declare void @printString(i8*)");
+    emit("declare i32 @readInt()");
+    emit("declare double @readDouble()");
+    emit("declare i8* @readLine()");
+}
+
