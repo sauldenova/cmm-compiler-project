@@ -93,14 +93,11 @@ $RECYCLE.BIN/
 .Trash-*
 
 ### Project specifics ###
-cmmFront
-cmm.tab.*
-cmmFront.dSYM/
-lex.yy.c
 cmm.output
-.texpadtmp/
-compiler.zip
 program.ll
+out/
+.texpadtmp/
+*.zip
 *.bc
 *.s
 *.o

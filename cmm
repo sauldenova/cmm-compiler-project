@@ -56,7 +56,7 @@ def find_tools():
     if not llvm_llc:
         llvm_llc = '/usr/local/Cellar/llvm/3.6.2/bin/llc'
 
-    cmm_front = os.path.abspath('./cmmFront')
+    cmm_front = os.path.abspath('./out/cmmFront')
     if not os.path.isfile(cmm_front):
         error('CMM front is not built, please build the project before continuing')
 
@@ -73,6 +73,7 @@ def main():
     source_file.close()
     output_file.close()
 
+    clang_flags = '-o' + output_file.name
     llvm_link_flags = '-o=main.bc'
     llvm_opt_flags = '-std-link-opts'
     llvm_llc_flags = '-filetype=obj'
@@ -90,9 +91,8 @@ def main():
 
     subprocess.call([llvm_llc, llvm_llc_flags, 'main_opt.bc'])
 
-    clang_flags = '-o' + output_file.name
-    subprocess.call([clang, clang_flags, 'main_opt.o'])
-    subprocess.call([rm, 'program.bc', 'runtime.bc', 'main.bc', 'main_opt.bc', 'main_opt.o'])
+    subprocess.call([clang, clang_flags, '-w', 'main_opt.o'])
+    subprocess.call([rm, 'program.ll', 'program.bc', 'runtime.bc', 'main.bc', 'main_opt.bc', 'main_opt.o'])
 
     return
 
