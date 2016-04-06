@@ -14,9 +14,9 @@ extern FILE *yyin;
     struct t_instr* instr;
     struct t_symbol* symbol;
     struct t_arguments_list* args;
+    struct t_type* type;
     char* id;
     char* val;
-    char t;
 }
 
 %token <val> INTCONST DOUBLECONST BOOLCONST STRINGCONST
@@ -45,7 +45,7 @@ extern FILE *yyin;
 %nonassoc "usub"
 %nonassoc "uadd"
 
-%type <t> type baseType
+%type <type> type baseType
 %type <instr> expr optExpr call constant variable reals realsDef realsDefEnd formals formalsDef formalsDefEnd declFunctionType
 %type <symbol> lValue
 
@@ -60,17 +60,24 @@ decl : declVariable
      ;
 
 declVariable : variable SEMICOLON {
-                   sprintf(str, "\t\t%%%s = alloca %s", $1->addr, transformType($1->type));
-                   emit(str);
-             }
+                   if ($1->type->type == STRING_TYPE) {
+                       sprintf(str, "  %%%s = alloca [%d x i8]", $1->addr, $1->type->size);
+                       emit(str);
+                   } else {
+                       sprintf(str, "  %%%s = alloca %s", $1->addr, transformType($1->type));
+                       emit(str);
+                   }
+               }
              ;
 
 variable : type IDENTIFIER {
                place = createSymbol($2);
-               place->t = $1;
+               free(place->type);
+               place->type = copyType($1);
 
                $$ = allocateInstr();
-               $$->type = $1;
+               free($$->type);
+               $$->type = copyType($1);
                $$->addr = $2;
            }
          ;
@@ -79,27 +86,35 @@ type : baseType {
            $$ = $1;
        }
      | STRING LBRACKET INTCONST RBRACKET {
-           $$ = STRING_TYPE;
+           $$ = allocateType();
+           $$->type = STRING_TYPE;
+           $$->size = atoi($3) + 1;
        }
      | baseType LBRACKET INTCONST RBRACKET {
-           $$ = $1 + START_ARRAY_TYPE;
+           $$ = allocateType();
+           $$->type = $1->type + START_ARRAY_TYPE;
+           $$->size = atoi($3);
+           free($1);
        }
      ;
 
 baseType : INT {
-               $$ = INT_TYPE;
+               $$ = allocateType();
+               $$->type = INT_TYPE;
            }
          | DOUBLE {
-               $$ = DOUBLE_TYPE;
+               $$ = allocateType();
+               $$->type = DOUBLE_TYPE;
            }
          | BOOL {
-               $$ = BOOL_TYPE;
+               $$ = allocateType();
+               $$->type = BOOL_TYPE;
            }
          ;
 
 declFunction : declFunctionHead scopeStart block scopeEnd scopeEnd functionEnd {
-                   if(currentFunction->t != VOID_FUNCTION_TYPE && currentFunction->returnCount == 0) {
-                       sprintf(str, "The function %s needs at least one return", currentFunction->n);
+                   if(currentFunction->type->type != VOID_FUNCTION_TYPE && currentFunction->returnCount == 0) {
+                       sprintf(str, "The function %s needs at least one return", currentFunction->name);
                        yyerror(str);
                    }
                }
@@ -133,10 +148,10 @@ declFunctionHead : declFunctionType scopeStart LPAREN formals RPAREN {
                                strncpy(varName, varStart, varEnd - varStart);
                            }
 
-                           sprintf(str, "\t\t%%%s = alloca %s", varName, type);
+                           sprintf(str, "  %%%s = alloca %s", varName, type);
                            emit(str);
 
-                           sprintf(str, "\t\tstore %s %%__p__%s , %s* %%%s", type, varName, type, varName);
+                           sprintf(str, "  store %s %%__p__%s , %s* %%%s", type, varName, type, varName);
                            emit(str);
 
                            if (curr == NULL) {
@@ -150,20 +165,22 @@ declFunctionHead : declFunctionType scopeStart LPAREN formals RPAREN {
 
 declFunctionType : type IDENTIFIER {
                        place = createSymbol($2);
-                       place->t = $1 + START_FUNCTION_TYPE;
+                       place->type->type = $1->type + START_FUNCTION_TYPE;
+                       place->type->size = $1->size;
                        currentFunction = place;
 
                        $$ = allocateInstr();
-                       $$->type = $1 + START_FUNCTION_TYPE;
+                       $$->type->type = $1->type + START_FUNCTION_TYPE;
+                       $$->type->size = $1->size;
                        $$->addr = strdup($2);
                    }
                  | VOID IDENTIFIER {
                        place = createSymbol($2);
-                       place->t = VOID_FUNCTION_TYPE;
+                       place->type->type = VOID_FUNCTION_TYPE;
                        currentFunction = place;
 
                        $$ = allocateInstr();
-                       $$->type = VOID_FUNCTION_TYPE;
+                       $$->type->type = VOID_FUNCTION_TYPE;
                        $$->addr = strdup($2);
                    }
                  ;
@@ -175,7 +192,7 @@ functionEnd : %empty {
 
 formals : %empty {
               $$ = allocateInstr();
-              $$->type = VOID_TYPE;
+              $$->type->type = VOID_TYPE;
               $$->addr = "";
           }
         | formalsDefEnd {
@@ -257,7 +274,7 @@ blockDef : %empty
 
 optExpr : %empty {
               $$ = allocateInstr();
-              $$->type = VOID_TYPE;
+              $$->type->type = VOID_TYPE;
           }
         | expr {
               $$ = $1;
@@ -274,20 +291,18 @@ instr : SEMICOLON
       | scopeStart block scopeEnd
       ;
 
-instrIf : IF LPAREN instrIfCond RPAREN scopeStart instr scopeEnd instrIfEnd %prec "then" {
-          }
-        | IF LPAREN instrIfCond RPAREN scopeStart instr scopeEnd ELSE instrIfElse scopeStart instr scopeEnd instrIfElseEnd {
-          }
+instrIf : IF LPAREN instrIfCond RPAREN scopeStart instr scopeEnd instrIfEnd %prec "then"
+        | IF LPAREN instrIfCond RPAREN scopeStart instr scopeEnd ELSE instrIfElse scopeStart instr scopeEnd instrIfElseEnd
         ;
 
 instrIfCond : expr {
-                  if ($1->type != BOOL_TYPE) {
+                  if ($1->type->type != BOOL_TYPE) {
                       yyerror("Non-compatible types: if");
                   } else {
                       label1 = createLabel();
                       label2 = createLabel();
                       endLabel = createLabel();
-                      sprintf(str, "\t\tbr i1 %s, label %%%s, label %%%s", $1->addr, label1, label2);
+                      sprintf(str, "  br i1 %s, label %%%s, label %%%s", $1->addr, label1, label2);
                       emit(str);
                       sprintf(str, "%s:", label1);
                       emit(str);
@@ -296,7 +311,7 @@ instrIfCond : expr {
             ;
 
 instrIfElse : %empty {
-                  sprintf(str, "\t\tbr label %%%s", endLabel);
+                  sprintf(str, "  br label %%%s", endLabel);
                   emit(str);
                   sprintf(str, "%s:", label2);
                   emit(str);
@@ -304,7 +319,7 @@ instrIfElse : %empty {
             ;
 
 instrIfEnd : %empty {
-                 sprintf(str, "\t\tbr label %%%s", label2);
+                 sprintf(str, "  br label %%%s", label2);
                  emit(str);
                  sprintf(str, "%s:", label2);
                  emit(str);
@@ -312,7 +327,7 @@ instrIfEnd : %empty {
            ;
 
 instrIfElseEnd : %empty {
-                     sprintf(str, "\t\tbr label %%%s", endLabel);
+                     sprintf(str, "  br label %%%s", endLabel);
                      emit(str);
                      sprintf(str, "%s:", endLabel);
                      emit(str);
@@ -327,7 +342,7 @@ instrWhileStart : %empty {
                       startLabel = createLabel();
                       label1 = createLabel();
                       endLabel = createLabel();
-                      sprintf(str, "\t\tbr label %%%s", startLabel);
+                      sprintf(str, "  br label %%%s", startLabel);
                       emit(str);
                       sprintf(str, "%s:", startLabel);
                       emit(str);
@@ -335,10 +350,10 @@ instrWhileStart : %empty {
                 ;
 
 instrWhileCond : expr {
-                     if ($1->type != BOOL_TYPE) {
+                     if ($1->type->type != BOOL_TYPE) {
                          yyerror("Non-compatible types: while");
                      } else {
-                         sprintf(str, "\t\tbr i1 %s , label %%%s , label %%%s", $1->addr, label1, endLabel);
+                         sprintf(str, "  br i1 %s , label %%%s , label %%%s", $1->addr, label1, endLabel);
                          emit(str);
                          sprintf(str, "%s:", label1);
                          emit(str);
@@ -347,7 +362,7 @@ instrWhileCond : expr {
                ;
 
 instrWhileEnd : %empty {
-                    sprintf(str, "\t\tbr label %%%s", startLabel);
+                    sprintf(str, "  br label %%%s", startLabel);
                     emit(str);
                     sprintf(str, "%s:", endLabel);
                     emit(str);
@@ -363,7 +378,7 @@ instrForStart : %empty {
                     label1 = createLabel();
                     label2 = createLabel();
                     endLabel = createLabel();
-                    sprintf(str, "\t\tbr label %%%s", startLabel);
+                    sprintf(str, "  br label %%%s", startLabel);
                     emit(str);
                     sprintf(str, "%s:", startLabel);
                     emit(str);
@@ -371,10 +386,10 @@ instrForStart : %empty {
               ;
 
 instrForCond : expr {
-                   if ($1->type != BOOL_TYPE) {
+                   if ($1->type->type != BOOL_TYPE) {
                        yyerror("Non-compatible types: for");
                    } else {
-                       sprintf(str, "\t\tbr i1 %s , label %%%s , label %%%s", $1->addr, label1, endLabel);
+                       sprintf(str, "  br i1 %s , label %%%s , label %%%s", $1->addr, label1, endLabel);
                        emit(str);
                        sprintf(str, "%s:", label2);
                        emit(str);
@@ -383,7 +398,7 @@ instrForCond : expr {
              ;
 
 instrForLabel : %empty {
-                    sprintf(str, "\t\tbr label %%%s", startLabel);
+                    sprintf(str, "  br label %%%s", startLabel);
                     emit(str);
                     sprintf(str, "%s:", label1);
                     emit(str);
@@ -391,7 +406,7 @@ instrForLabel : %empty {
               ;
 
 instrForEnd : %empty {
-                  sprintf(str, "\t\tbr label %%%s", label2);
+                  sprintf(str, "  br label %%%s", label2);
                   emit(str);
                   sprintf(str, "%s:", endLabel);
                   emit(str);
@@ -399,15 +414,15 @@ instrForEnd : %empty {
             ;
 
 instrReturn : RETURN optExpr SEMICOLON {
-                  if ($2->type != currentFunction->t - START_FUNCTION_TYPE) {
+                  if ($2->type->type != currentFunction->type->type - START_FUNCTION_TYPE) {
                       yyerror("Invalid return function type");
                   } else {
                       currentFunction->returnCount++;
 
-                      if ($2->type == VOID_TYPE) {
-                          sprintf(str, "\t\tret void");
+                      if ($2->type->type == VOID_TYPE) {
+                          sprintf(str, "  ret void");
                       } else {
-                          sprintf(str, "\t\tret %s %s", transformType($2->type), $2->addr);
+                          sprintf(str, "  ret %s %s", transformType($2->type), $2->addr);
                       }
                       emit(str);
                   }
@@ -415,26 +430,26 @@ instrReturn : RETURN optExpr SEMICOLON {
             ;
 
 instrPrint : PRINTDOUBLE LPAREN expr RPAREN SEMICOLON {
-                 if ($3->type != DOUBLE_TYPE) {
+                 if ($3->type->type != DOUBLE_TYPE) {
                      yyerror("Non-double arguments in printDouble expression");
                  } else {
-                     sprintf(str, "\t\tcall void @printDouble(double %s)", $3->addr);
+                     sprintf(str, "  call void @printDouble(double %s)", $3->addr);
                      emit(str);
                  }
              }
            | PRINTINT LPAREN expr RPAREN SEMICOLON {
-                 if ($3->type != INT_TYPE) {
+                 if ($3->type->type != INT_TYPE) {
                      yyerror("Non-int arguments in printInt expression");
                  } else {
-                     sprintf(str, "\t\tcall void @printInt(i32 %s)", $3->addr);
+                     sprintf(str, "  call void @printInt(i32 %s)", $3->addr);
                      emit(str);
                  }
              }
            | PRINTSTRING LPAREN expr RPAREN SEMICOLON {
-                 if ($3->type != STRING_TYPE) {
+                 if ($3->type->type != STRING_TYPE) {
                      yyerror("Non-string arguments in printString expression");
                  } else {
-                     sprintf(str, "\t\tcall void @printString(i8* %s)", $3->addr);
+                     sprintf(str, "  call void @printString(i8* %s)", $3->addr);
                      emit(str);
                  }
              }
@@ -442,12 +457,19 @@ instrPrint : PRINTDOUBLE LPAREN expr RPAREN SEMICOLON {
 
 expr : lValue ASSIGN expr {
            if ($1 != NULL) {
-               if ($1->t != $3->type) {
+               if (!canAssign($1->type, $3->type)) {
                    yyerror("Non-compatible types: =");
+                   printf("%s,%d %s,%d\n", convertType($1->type), $1->type->size, convertType($3->type), $3->type->size);
                } else {
-                   const char* type = transformType($1->t);
-                   sprintf(str, "\t\tstore %s %s , %s* %%%s", type, $3->addr, type, $1->n);
-                   emit(str);
+                   if ($1->type->type == STRING_TYPE) {
+                       int size = $1->type->size;
+                       sprintf(str, "  store [%d x i8] %s , [%d x i8]* %%%s", size, convertString(size, $3->addr), size, $1->name);
+                       emit(str);
+                   } else {
+                       const char* type = transformType($1->type);
+                       sprintf(str, "  store %s %s , %s* %%%s", type, $3->addr, type, $1->name);
+                       emit(str);
+                   }
                    $$ = $3;
                }
            }
@@ -457,11 +479,16 @@ expr : lValue ASSIGN expr {
        }
      | lValue {
            char* temp = createTemporal();
-           sprintf(str, "\t\t%s = load %s* %%%s", temp, transformType($1->t), $1->n);
-           emit(str);
+           if ($1->type->type == STRING_TYPE) {
+               sprintf(str, "  %s = getelementptr [%d x i8]* %%%s, i32 0, i32 0", temp, $1->type->size, $1->name);
+               emit(str);
+           } else {
+               sprintf(str, "  %s = load %s* %%%s", temp, transformType($1->type), $1->name);
+               emit(str);
+           }
 
            $$ = allocateInstr();
-           $$->type = ($1 == NULL ? '\0' : $1->t);
+           $$->type = ($1 == NULL ? '\0' : $1->type);
            $$->addr = temp;
        }
      | call {
@@ -471,13 +498,13 @@ expr : lValue ASSIGN expr {
            $$ = $2;
        }
      | expr ADD expr {
-           if (areNumeric($1->type, $3->type)) {
+           if (areNumeric($1->type->type, $3->type->type)) {
                char* temp = createTemporal();
 
-               if ($1->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = add i32 %s, %s", temp, $1->addr, $3->addr);
+               if ($1->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = add i32 %s, %s", temp, $1->addr, $3->addr);
                } else {
-                   sprintf(str, "\t\t%s = fadd double %s, %s", temp, $1->addr, $3->addr);
+                   sprintf(str, "  %s = fadd double %s, %s", temp, $1->addr, $3->addr);
                }
 
                emit(str);
@@ -490,13 +517,13 @@ expr : lValue ASSIGN expr {
            }
        }
      | expr SUB expr {
-           if (areNumeric($1->type, $3->type)) {
+           if (areNumeric($1->type->type, $3->type->type)) {
                char* temp = createTemporal();
 
-               if ($1->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = sub i32 %s, %s", temp, $1->addr, $3->addr);
+               if ($1->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = sub i32 %s, %s", temp, $1->addr, $3->addr);
                } else {
-                   sprintf(str, "\t\t%s = fsub double %s, %s", temp, $1->addr, $3->addr);
+                   sprintf(str, "  %s = fsub double %s, %s", temp, $1->addr, $3->addr);
                }
 
                emit(str);
@@ -509,13 +536,13 @@ expr : lValue ASSIGN expr {
            }
        }
      | expr MUL expr {
-           if (areNumeric($1->type, $3->type)) {
+           if (areNumeric($1->type->type, $3->type->type)) {
                char* temp = createTemporal();
 
-               if ($1->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = mul i32 %s, %s", temp, $1->addr, $3->addr);
+               if ($1->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = mul i32 %s, %s", temp, $1->addr, $3->addr);
                } else {
-                   sprintf(str, "\t\t%s = fmul double %s, %s", temp, $1->addr, $3->addr);
+                   sprintf(str, "  %s = fmul double %s, %s", temp, $1->addr, $3->addr);
                }
 
                emit(str);
@@ -528,13 +555,13 @@ expr : lValue ASSIGN expr {
            }
        }
      | expr DIV expr {
-           if (areNumeric($1->type, $3->type)) {
+           if (areNumeric($1->type->type, $3->type->type)) {
                char* temp = createTemporal();
 
-               if ($1->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = sdiv i32 %s, %s", temp, $1->addr, $3->addr);
+               if ($1->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = sdiv i32 %s, %s", temp, $1->addr, $3->addr);
                } else {
-                   sprintf(str, "\t\t%s = fdiv double %s, %s", temp, $1->addr, $3->addr);
+                   sprintf(str, "  %s = fdiv double %s, %s", temp, $1->addr, $3->addr);
                }
 
                emit(str);
@@ -547,10 +574,10 @@ expr : lValue ASSIGN expr {
            }
        }
      | expr MOD expr {
-           if ($1->type == INT_TYPE && $3->type == INT_TYPE) {
+           if ($1->type->type == INT_TYPE && $3->type->type == INT_TYPE) {
                char* temp = createTemporal();
 
-               sprintf(str, "\t\t%s = srem i32 %s, %s", temp, $1->addr, $3->addr);
+               sprintf(str, "  %s = srem i32 %s, %s", temp, $1->addr, $3->addr);
 
                emit(str);
 
@@ -562,179 +589,179 @@ expr : lValue ASSIGN expr {
            }
        }
      | expr LESS expr {
-           if (areNumeric($1->type, $3->type)) {
+           if (areNumeric($1->type->type, $3->type->type)) {
                char* temp = createTemporal();
 
-               if ($1->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = icmp slt i32 %s, %s", temp, $1->addr, $3->addr);
+               if ($1->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = icmp slt i32 %s, %s", temp, $1->addr, $3->addr);
                } else {
-                   sprintf(str, "\t\t%s = fcmp olt double %s, %s", temp, $1->addr, $3->addr);
+                   sprintf(str, "  %s = fcmp olt double %s, %s", temp, $1->addr, $3->addr);
                }
 
                emit(str);
 
                $$ = allocateInstr();
-               $$->type = BOOL_TYPE;
+               $$->type->type = BOOL_TYPE;
                $$->addr = temp;
            } else {
                yyerror("Non-compatible types: expr < expr");
            }
        }
      | expr LESSEQ expr {
-           if (areNumeric($1->type, $3->type)) {
+           if (areNumeric($1->type->type, $3->type->type)) {
                char* temp = createTemporal();
 
-               if ($1->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = icmp sle i32 %s, %s", temp, $1->addr, $3->addr);
+               if ($1->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = icmp sle i32 %s, %s", temp, $1->addr, $3->addr);
                } else {
-                   sprintf(str, "\t\t%s = fcmp ole double %s, %s", temp, $1->addr, $3->addr);
+                   sprintf(str, "  %s = fcmp ole double %s, %s", temp, $1->addr, $3->addr);
                }
 
                emit(str);
 
                $$ = allocateInstr();
-               $$->type = BOOL_TYPE;
+               $$->type->type = BOOL_TYPE;
                $$->addr = temp;
            } else {
                yyerror("Non-compatible types: expr <= expr");
            }
        }
      | expr GREATER expr {
-           if (areNumeric($1->type, $3->type)) {
+           if (areNumeric($1->type->type, $3->type->type)) {
                char* temp = createTemporal();
 
-               if ($1->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = icmp sgt i32 %s, %s", temp, $1->addr, $3->addr);
+               if ($1->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = icmp sgt i32 %s, %s", temp, $1->addr, $3->addr);
                } else {
-                   sprintf(str, "\t\t%s = fcmp ogt double %s, %s", temp, $1->addr, $3->addr);
+                   sprintf(str, "  %s = fcmp ogt double %s, %s", temp, $1->addr, $3->addr);
                }
 
                emit(str);
 
                $$ = allocateInstr();
-               $$->type = BOOL_TYPE;
+               $$->type->type = BOOL_TYPE;
                $$->addr = temp;
            } else {
                yyerror("Non-compatible types: expr > expr");
            }
        }
      | expr GREATEREQ expr {
-           if (areNumeric($1->type, $3->type)) {
+           if (areNumeric($1->type->type, $3->type->type)) {
                char* temp = createTemporal();
 
-               if ($1->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = icmp sge i32 %s, %s", temp, $1->addr, $3->addr);
+               if ($1->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = icmp sge i32 %s, %s", temp, $1->addr, $3->addr);
                } else {
-                   sprintf(str, "\t\t%s = fcmp oge double %s, %s", temp, $1->addr, $3->addr);
+                   sprintf(str, "  %s = fcmp oge double %s, %s", temp, $1->addr, $3->addr);
                }
 
                emit(str);
 
                $$ = allocateInstr();
-               $$->type = BOOL_TYPE;
+               $$->type->type = BOOL_TYPE;
                $$->addr = temp;
            } else {
                yyerror("Non-compatible types: expr >= expr");
            }
        }
      | expr EQUAL expr {
-           if (areNumeric($1->type, $3->type)) {
+           if (areNumeric($1->type->type, $3->type->type)) {
                char* temp = createTemporal();
 
-               if ($1->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = icmp eq i32 %s, %s", temp, $1->addr, $3->addr);
+               if ($1->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = icmp eq i32 %s, %s", temp, $1->addr, $3->addr);
                } else {
-                   sprintf(str, "\t\t%s = fcmp oeq double %s, %s", temp, $1->addr, $3->addr);
+                   sprintf(str, "  %s = fcmp oeq double %s, %s", temp, $1->addr, $3->addr);
                }
 
                emit(str);
 
                $$ = allocateInstr();
-               $$->type = BOOL_TYPE;
+               $$->type->type = BOOL_TYPE;
                $$->addr = temp;
            } else {
                yyerror("Non-compatible types: expr == expr");
            }
        }
      | expr NEQUAL expr {
-           if (areNumeric($1->type, $3->type)) {
+           if (areNumeric($1->type->type, $3->type->type)) {
                char* temp = createTemporal();
 
-               if ($1->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = icmp ne i32 %s, %s", temp, $1->addr, $3->addr);
+               if ($1->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = icmp ne i32 %s, %s", temp, $1->addr, $3->addr);
                } else {
-                   sprintf(str, "\t\t%s = fcmp one double %s, %s", temp, $1->addr, $3->addr);
+                   sprintf(str, "  %s = fcmp one double %s, %s", temp, $1->addr, $3->addr);
                }
 
                emit(str);
 
                $$ = allocateInstr();
-               $$->type = BOOL_TYPE;
+               $$->type->type = BOOL_TYPE;
                $$->addr = temp;
            } else {
                yyerror("Non-compatible types: expr != expr");
            }
        }
      | expr AND expr {
-           if ($1->type == BOOL_TYPE && $3->type == BOOL_TYPE) {
+           if ($1->type->type == BOOL_TYPE && $3->type->type == BOOL_TYPE) {
                char* temp = createTemporal();
 
-               sprintf(str, "\t\t%s = and i1 %s, %s", temp, $1->addr, $3->addr);
+               sprintf(str, "  %s = and i1 %s, %s", temp, $1->addr, $3->addr);
 
                emit(str);
 
                $$ = allocateInstr();
-               $$->type = BOOL_TYPE;
+               $$->type->type = BOOL_TYPE;
                $$->addr = temp;
            } else {
                yyerror("Non-compatible types: expr && expr");
            }
        }
      | expr OR expr {
-           if ($1->type == BOOL_TYPE && $3->type == BOOL_TYPE) {
+           if ($1->type->type == BOOL_TYPE && $3->type->type == BOOL_TYPE) {
                char* temp = createTemporal();
 
-               sprintf(str, "\t\t%s = or i1 %s, %s", temp, $1->addr, $3->addr);
+               sprintf(str, "  %s = or i1 %s, %s", temp, $1->addr, $3->addr);
 
                emit(str);
 
                $$ = allocateInstr();
-               $$->type = BOOL_TYPE;
+               $$->type->type = BOOL_TYPE;
                $$->addr = temp;
            } else {
                yyerror("Non-compatible types: expr || expr");
            }
        }
      | NOT expr {
-           if ($2->type == BOOL_TYPE) {
+           if ($2->type->type == BOOL_TYPE) {
                char* temp = createTemporal();
 
-               sprintf(str, "\t\t%s = xor i1 %s, 1", temp, $2->addr);
+               sprintf(str, "  %s = xor i1 %s, 1", temp, $2->addr);
 
                emit(str);
 
                $$ = allocateInstr();
-               $$->type = BOOL_TYPE;
+               $$->type->type = BOOL_TYPE;
                $$->addr = temp;
            } else {
                yyerror("Non-compatible types: ! expr");
            }
        }
      | ADD expr %prec "uadd" {
-           if ($2->type == INT_TYPE || $2->type == DOUBLE_TYPE) {
+           if ($2->type->type == INT_TYPE || $2->type->type == DOUBLE_TYPE) {
                $$ = $2;
            } else {
                yyerror("Non-compatible types: + expr");
            }
        }
      | SUB expr %prec "usub" {
-           if ($2->type == INT_TYPE || $2->type == DOUBLE_TYPE) {
+           if ($2->type->type == INT_TYPE || $2->type->type == DOUBLE_TYPE) {
                char* temp = createTemporal();
 
-               if ($2->type == INT_TYPE) {
-                   sprintf(str, "\t\t%s = sub i32 0, %s", temp, $2->addr);
+               if ($2->type->type == INT_TYPE) {
+                   sprintf(str, "  %s = sub i32 0, %s", temp, $2->addr);
                } else {
-                   sprintf(str, "\t\t%s = fsub double -0.0, %s", temp, $2->addr);
+                   sprintf(str, "  %s = fsub double -0.0, %s", temp, $2->addr);
                }
                emit(str);
 
@@ -748,31 +775,31 @@ expr : lValue ASSIGN expr {
      | READINT LPAREN RPAREN {
            char* temp = createTemporal();
 
-           sprintf(str, "\t\t%s = call i32 @readInt()", temp);
+           sprintf(str, "  %s = call i32 @readInt()", temp);
            emit(str);
 
            $$ = allocateInstr();
-           $$->type = INT_TYPE;
+           $$->type->type = INT_TYPE;
            $$->addr = temp;
        }
      | READDOUBLE LPAREN RPAREN {
            char* temp = createTemporal();
 
-           sprintf(str, "\t\t%s = call i32 @readDouble()", temp);
+           sprintf(str, "  %s = call i32 @readDouble()", temp);
            emit(str);
 
            $$ = allocateInstr();
-           $$->type = DOUBLE_TYPE;
+           $$->type->type = DOUBLE_TYPE;
            $$->addr = temp;
        }
      | READLINE LPAREN RPAREN {
            char* temp = createTemporal();
 
-           sprintf(str, "\t\t%s = call i32 @readLine()", temp);
+           sprintf(str, "  %s = call i32 @readLine()", temp);
            emit(str);
 
            $$ = allocateInstr();
-           $$->type = STRING_TYPE;
+           $$->type->type = STRING_TYPE;
            $$->addr = temp;
        }
      ;
@@ -795,18 +822,18 @@ call : IDENTIFIER LPAREN reals RPAREN {
                yyerror(&str);
            } else {
                char* temp = createTemporal();
-               sprintf(str, "\t\t%s = call %s @%s(%s)", temp, transformType(place->t), $1, $3->addr);
+               sprintf(str, "  %s = call %s @%s(%s)", temp, transformType(place->type), $1, $3->addr);
                emit(str);
                $$->addr = temp;
            }
 
-           $$->type = (place == NULL ? INVALID_TYPE : place->t - START_FUNCTION_TYPE);
+           $$->type->type = (place == NULL ? INVALID_TYPE : place->type->type - START_FUNCTION_TYPE);
        }
      ;
 
 reals : %empty {
             $$ = allocateInstr();
-            $$->type = VOID_TYPE;
+            $$->type->type = VOID_TYPE;
             $$->addr = "";
         }
       | realsDefEnd {
@@ -880,22 +907,23 @@ realsDef : expr COLON {
 
 constant : DOUBLECONST {
                $$ = allocateInstr();
-               $$->type = DOUBLE_TYPE;
+               $$->type->type = DOUBLE_TYPE;
                $$->addr = $1;
            }
          | INTCONST {
                $$ = allocateInstr();
-               $$->type = INT_TYPE;
+               $$->type->type = INT_TYPE;
                $$->addr = $1;
            }
          | BOOLCONST {
                $$ = allocateInstr();
-               $$->type = BOOL_TYPE;
+               $$->type->type = BOOL_TYPE;
                $$->addr = $1;
            }
          | STRINGCONST {
                $$ = allocateInstr();
-               $$->type = STRING_TYPE;
+               $$->type->type = STRING_TYPE;
+               $$->type->size = stringLength($1);
                $$->addr = $1;
            }
          ;
@@ -925,13 +953,18 @@ int main(int argc, char **argv) {
 
     yyparse();
     if (hasError) {
+        #ifdef DEBUG
+        printf("Printing symbols table\n");
+        printSymbolTable();
+        #endif //DEBUG
+
         return 1;
     } else {
-        #ifdef _DEBUG
+        #ifdef DEBUG
         printf("Expression accepted\n");
         printf("Printing symbols table\n");
         printSymbolTable();
-        #endif //_DEBUG
+        #endif //DEBUG
 
         FILE* input = fopen("program.ll", "w");
 

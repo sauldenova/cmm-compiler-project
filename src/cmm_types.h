@@ -1,11 +1,16 @@
 #ifndef __CMM_TYPES_H__
 #define __CMM_TYPES_H__
 
-typedef char t_type;
 typedef char t_bool;
 
 #define TRUE 0
 #define FALSE 1
+
+// Type structure definition
+struct t_type {
+    char type;
+    short size;
+};
 
 // Define types
 #define INT_TYPE                0
@@ -43,9 +48,9 @@ typedef char t_bool;
 /**
  * Function definitions
  */
-t_bool isTypeArray(t_type type);
-t_bool isTypeFunction(t_type type);
-const char* convertType(t_type type);
-const char* transformType(t_type type);
+t_bool isTypeArray(struct t_type* type);
+t_bool isTypeFunction(struct t_type* type);
+const char* convertType(struct t_type* type);
+const char* transformType(struct t_type* type);
 
 #endif // __CMM_TYPES_H__

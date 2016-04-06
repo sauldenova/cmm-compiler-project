@@ -5,7 +5,7 @@ YACC = /usr/local/Cellar/bison/3.0.4/bin/bison
 LEX_FLAGS = -oout/lex.yy.c
 YACC_FLAGS = -d -oout/cmm.tab.c -Wno-other
 C_FLAGS = -ll -ly -g -Wno-implicit-function-declaration -Isrc -Iout
-C_DEBUG_FLAGS = -D DEBUG
+C_DEBUG_FLAGS = -DDEBUG
 
 .PHONY: help
 .DEFAULT_GOAL := help
@@ -14,6 +14,7 @@ build: out/cmmFront ## Compiles all the files for the executable
 
 clean: ## Cleans the directory from the intermediate files
 	-rm -rf out
+	-rm *.out
 
 test: build ## Runs all the tests from the test suite
 	./cmm samplePrograms/s1.cmm
@@ -30,7 +31,7 @@ out/:
 	mkdir out
 
 out/cmmFront: out/lex.yy.c out/cmm.tab.c
-	$(C) $(C_FLAGS) $(C_DEBUG_FLAGS) -o out/cmmFront out/lex.yy.c out/cmm.tab.c src/cmm.c src/cmm_types.c
+	$(C) $(C_FLAGS) -o out/cmmFront out/lex.yy.c out/cmm.tab.c src/cmm.c src/cmm_types.c
 
 out/lex.yy.c: out/ src/cmm.l
 	$(LEX) $(LEX_FLAGS) src/cmm.l

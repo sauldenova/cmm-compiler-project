@@ -16,7 +16,7 @@ def error(*objs):
     sys.exit(1)
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description='Compiler for the cmm language. Currently uses an LLVM backend.')
+    parser = argparse.ArgumentParser(description='Compiler for the cmm language. Currently uses a LLVM backend.')
 
     parser.add_argument('-o', dest='output', type=argparse.FileType('w'),
                         default='a.out', metavar='output',
@@ -82,7 +82,10 @@ def main():
     if return_code != 0:
         exit(1)
 
-    subprocess.call([llvm_as, 'program.ll'])
+    return_code = subprocess.call([llvm_as, 'program.ll'])
+    if return_code != 0:
+        error("Fatal error")
+
     subprocess.call([llvm_as, 'runtime.ll'])
     subprocess.call([llvm_link, llvm_link_flags, 'program.bc', 'runtime.bc'])
 

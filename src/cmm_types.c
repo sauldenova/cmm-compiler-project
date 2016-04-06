@@ -1,16 +1,18 @@
+#include <string.h>
+
 #include "cmm.h"
 #include "cmm_types.h"
 
-t_bool isTypeArray(t_type type) {
-    return (INT_ARRAY_TYPE <= type && type < INT_FUNCTION_TYPE);
+t_bool isTypeArray(struct t_type* type) {
+    return (INT_ARRAY_TYPE <= type->type && type->type < INT_FUNCTION_TYPE);
 }
 
-t_bool isTypeFunction(t_type type) {
-    return (INT_FUNCTION_TYPE <= type);
+t_bool isTypeFunction(struct t_type* type) {
+    return (INT_FUNCTION_TYPE <= type->type);
 }
 
-const char* convertType(t_type type) {
-    switch(type) {
+const char* convertType(struct t_type* type) {
+    switch(type->type) {
         case INT_TYPE:
             return "I";
         case BOOL_TYPE:
@@ -48,8 +50,8 @@ const char* convertType(t_type type) {
     }
 }
 
-const char* transformType(t_type type) {
-    switch(type) {
+const char* transformType(struct t_type* type) {
+    switch(type->type) {
         case INT_FUNCTION_TYPE:
         case INT_TYPE:
             return "i32";

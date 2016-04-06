@@ -21,21 +21,21 @@ struct t_symtab_list;
 // Defines an argument list
 struct t_arguments_list {
     struct t_arguments_list* next;
-    t_type type;
+    struct t_type* type;
 };
 
 struct t_instr {
-    t_type type;
+    struct t_type* type;
     char* addr;
     struct t_arguments_list* args;
 };
 
 // Defines a symbol
 struct t_symbol {
-    char *n;
-    char t;
     int count;
     int returnCount;
+    char *name;
+    struct t_type* type;
     struct t_arguments_list* arguments;
 };
 
@@ -61,7 +61,7 @@ struct t_symtab_list {
 /**
  * Variables
  */
-char str[200];
+char str[10000];
 struct t_symbol* place;
 struct t_symbol* currentFunction;
 struct t_symtab* currSymTab;
@@ -77,6 +77,7 @@ char* endLabel;
  * Functions
  */
 t_bool areNumeric(char type1, char type2);
+t_bool canAssign(struct t_type* type1, struct t_type* type2);
 struct t_symbol* createSymbol(char* name);
 struct t_symbol* lookup(char* name);
 struct t_typeexpr assignSymbol(struct t_symbol* sym, struct t_typeexpr expr);
@@ -88,8 +89,13 @@ void writeCodeToFile(FILE* outputFile);
 char* createTemporal();
 char* createLabel();
 struct t_instr* allocateInstr();
+struct t_type* allocateType();
 struct t_arguments_list* allocateArgumentsList();
+struct t_symbol* allocateSymbol();
+struct t_type* copyType(struct t_type* type);
 char* allocateString(int size);
+char* convertString(int length, char* str);
+int stringLength(char* str);
 
 #endif // __CMM_H__
 

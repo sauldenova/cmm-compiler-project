@@ -16,6 +16,18 @@ t_bool areNumeric(char type1, char type2) {
     return ((type1 == INT_TYPE || type1 == DOUBLE_TYPE) && type1 == type2);
 }
 
+t_bool canAssign(struct t_type* type1, struct t_type* type2) {
+    if (type1->type == STRING_TYPE && type2->type == STRING_TYPE) {
+        return (type1->size >= type2->size);
+    }
+
+    if (isTypeArray(type1) && isTypeArray(type2)) {
+        return (type1->type == type2->type && type1->size >= type2->size);
+    }
+
+    return (type1->type == type2->type);
+}
+
 static unsigned symhash(char *sym) {
     unsigned int hash = 0;
     unsigned c;
@@ -36,8 +48,8 @@ struct t_symbol* createSymbol(char* name) {
     }
 
     // Symbol wasn't found, therefore it doesn't exist
-    struct t_symbol* sym = malloc(sizeof(struct t_symbol));
-    sym->n = strdup(name);
+    struct t_symbol* sym = allocateSymbol();
+    sym->name = strdup(name);
     sym->count = 1;
 
     struct t_symbol_list* nextSymList = malloc(sizeof(struct t_symbol_list));
@@ -60,7 +72,7 @@ struct t_symbol* lookup(char* name) {
         symList = symtab->symbols[symhash(name) % NHASH];
         if (symList != NULL) {
             while (symList->next != NULL) {
-                if (strcmp(symList->symbol->n, name) == 0) {
+                if (strcmp(symList->symbol->name, name) == 0) {
                     symList->symbol->count++;
                     return symList->symbol;
                 }
@@ -68,7 +80,7 @@ struct t_symbol* lookup(char* name) {
                 symList = symList->next;
             }
 
-            if (strcmp(symList->symbol->n, name) == 0) {
+            if (strcmp(symList->symbol->name, name) == 0) {
                 symList->symbol->count++;
                 return symList->symbol;
             }
@@ -124,8 +136,8 @@ void _traverseSymbolTable(struct t_symtab* symtab, int depth) {
             }
 
             printf("|Name: %-16s|Type: %-3s  |Count: %3d|\n",
-                   idx->symbol->n,
-                   convertType(idx->symbol->t),
+                   idx->symbol->name,
+                   convertType(idx->symbol->type),
                    idx->symbol->count);
         }
     }
@@ -194,15 +206,169 @@ void writeCodeToFile(FILE* outputFile) {
 }
 
 struct t_instr* allocateInstr() {
-    return (struct t_instr*)malloc(sizeof(struct t_instr));
+    struct t_instr* instr = (struct t_instr*)malloc(sizeof(struct t_instr));
+    instr->type = allocateType();
+    return instr;
 }
 
 struct t_arguments_list* allocateArgumentsList() {
-    return (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list));
+    struct t_arguments_list* args = (struct t_arguments_list*)malloc(sizeof(struct t_arguments_list));
+    args->type = allocateType();
+    return args;
+}
+
+struct t_type* allocateType() {
+    return (struct t_type*)malloc(sizeof(struct t_type));
+}
+
+struct t_symbol* allocateSymbol() {
+    struct t_symbol* symbol = (struct t_symbol*)malloc(sizeof(struct t_symbol));
+    symbol->type = allocateType();
+    return symbol;
 }
 
 char* allocateString(int size) {
     return (char *)malloc(sizeof(char) * size);
+}
+
+struct t_type* copyType(struct t_type* type) {
+    struct t_type* newType = allocateType();
+    newType->type = type->type;
+    newType->size = type->size;
+    return newType;
+}
+
+void appendEscapeCode(char* targetString, char secondCharacter) {
+    *targetString = '\\';
+    targetString++;
+    switch(secondCharacter) {
+        case 'a':
+            *targetString = '0';
+            targetString++;
+            *targetString = '7';
+            targetString++;
+            break;
+        case 'b':
+            *targetString = '0';
+            targetString++;
+            *targetString = '8';
+            targetString++;
+            break;
+        case 'f':
+            *targetString = '0';
+            targetString++;
+            *targetString = 'C';
+            targetString++;
+            break;
+        case 'n':
+            *targetString = '0';
+            targetString++;
+            *targetString = 'A';
+            targetString++;
+            break;
+        case 'r':
+            *targetString = '0';
+            targetString++;
+            *targetString = 'D';
+            targetString++;
+            break;
+        case 't':
+            *targetString = '0';
+            targetString++;
+            *targetString = '9';
+            targetString++;
+            break;
+        case 'v':
+            *targetString = '0';
+            targetString++;
+            *targetString = 'B';
+            targetString++;
+            break;
+        case '\\':
+            *targetString = '5';
+            targetString++;
+            *targetString = 'C';
+            targetString++;
+            break;
+        case '\'':
+            *targetString = '2';
+            targetString++;
+            *targetString = '7';
+            targetString++;
+            break;
+        case '\"':
+            *targetString = '2';
+            targetString++;
+            *targetString = '2';
+            targetString++;
+            break;
+        case '\?':
+            *targetString = '3';
+            targetString++;
+            *targetString = 'F';
+            targetString++;
+            break;
+        case '0':
+            *targetString = '0';
+            targetString++;
+            *targetString = '0';
+            targetString++;
+            break;
+    }
+}
+
+char* convertString(int length, char* str) {
+    char* result = allocateString((3 * length) + 10);
+    char* ptr = str;
+    char* resPtr = result;
+    *resPtr = 'c';
+    resPtr++;
+    *resPtr = '\"';
+    resPtr++;
+    while (*ptr) {
+        if (*ptr == '\\') {
+            ptr++;
+            appendEscapeCode(resPtr, *ptr);
+            resPtr += 2;
+        } else {
+            *resPtr = *ptr;
+        }
+
+        resPtr++;
+        ptr++;
+        length--;
+    }
+
+    while(length--) {
+        *resPtr = '\\';
+        resPtr++;
+        *resPtr = '0';
+        resPtr++;
+        *resPtr = '0';
+        resPtr++;
+    }
+
+    *resPtr = '\"';
+    resPtr++;
+    *resPtr = '\0';
+    resPtr++;
+
+    return result;
+}
+
+int stringLength(char* str) {
+    int count = 0;
+    char* ptr = str;
+    while(*ptr) {
+        if (*ptr == '\\') {
+            ptr++;
+        }
+
+        ptr++;
+        count++;
+    }
+
+    return count;
 }
 
 void emitHeader() {

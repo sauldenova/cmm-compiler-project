@@ -62,29 +62,35 @@
 ")"                                 { return(RPAREN); }
 "{"                                 { return(LBRACE); }
 "}"                                 { return(RBRACE); }
-["][^\n"]*["]                       { yylval.id = strdup(yytext);
+["][^\n"]*["]                       { str[0] = '\0';
+                                      strcat(str, yytext + 1);
+                                      int len = strlen(str);
+                                      if (str[len - 3] == '\\' && str[len - 2] == '0') {
+                                          str[len - 1] = '\0';
+                                      } else {
+                                          str[len - 1] = '\\';
+                                          str[len] = '0';
+                                          str[len + 1] = '\0';
+                                      }
+                                      yylval.id = strdup(str);
                                       return(STRINGCONST);
                                     }
-["][^\n"]*[\n]                      { yyerror("Unfinished string"); lineNumber++; }
-[0-9]+\.[0-9]+                      { char* res = (char*)malloc(sizeof(char) * 100);
-                                      double f = strtod(yytext, NULL);
-                                      sprintf(res, "%#16llx", *( (long long*) &f ));
-                                      yylval.val = strdup(res);
-                                      free(res);
+["][^\n"]*[\n]                      { yyerror("Unfinished string");
+                                      lineNumber++;
+                                    }
+[0-9]+\.[0-9]+                      { double f = strtod(yytext, NULL);
+                                      sprintf(str, "%#16llx", *( (long long*) &f ));
+                                      yylval.val = strdup(str);
                                       return(DOUBLECONST);
                                     }
-[0-9]+[\.]?[0-9]*[eE][-+]?[0-9]+    { char* res = (char*)malloc(sizeof(char) * 100);
-                                      double f = strtod(yytext, NULL);
-                                      sprintf(res, "%#16llx", *( (long long*) &f ));
-                                      yylval.val = strdup(res);
-                                      free(res);
+[0-9]+[\.]?[0-9]*[eE][-+]?[0-9]+    { double f = strtod(yytext, NULL);
+                                      sprintf(str, "%#16llx", *( (long long*) &f ));
+                                      yylval.val = strdup(str);
                                       return(DOUBLECONST);
                                     }
-[0][xX][0-9A-Fa-f]+                 { char* res = (char*)malloc(sizeof(char) * 50);
-                                      long int val = strtol(yytext, NULL, 16);
-                                      sprintf(res, "%ld", val);
-                                      yylval.val = strdup(res);
-                                      free(res);
+[0][xX][0-9A-Fa-f]+                 { long int val = strtol(yytext, NULL, 16);
+                                      sprintf(str, "%ld", val);
+                                      yylval.val = strdup(str);
                                       return(INTCONST);
                                     }
 [0-9]+                              { yylval.val = strdup(yytext);
