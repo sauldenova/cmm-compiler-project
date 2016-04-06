@@ -1,7 +1,30 @@
 int main() {
     string[100] a;
     a = "This is a constant string";
+    a[4] = 'A';
     printString(a);
+    printInt(a[3]);
+
+    double[10] b;
+    int[10] c;
+    bool[10] d;
+    int i;
+
+    for(i = 0; i < 10; i = i + 1) {
+        b[i] = 10.0;
+        c[i] = i;
+        d[i] = true;
+    }
+
+    for(i = 0; i < 10; i = i + 1) {
+        printDouble(b[i]);
+        printInt(c[i]);
+        if (d[i]) {
+            printInt(1);
+        } else {
+            printInt(0);
+        }
+    }
 
     return 0;
 }

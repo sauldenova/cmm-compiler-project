@@ -24,6 +24,7 @@ struct t_arguments_list {
     struct t_type* type;
 };
 
+// Defines an instruction
 struct t_instr {
     struct t_type* type;
     char* addr;
@@ -58,26 +59,32 @@ struct t_symtab_list {
     struct t_symtab_list* next;
 };
 
+struct t_labels {
+    char* startLabel;
+    char* label1;
+    char* label2;
+    char* endLabel;
+};
+
 /**
  * Variables
  */
 char str[10000];
+int labelStackPointer;
+struct t_labels labelStack[100];
 struct t_symbol* place;
 struct t_symbol* currentFunction;
 struct t_symtab* currSymTab;
 struct t_symtab* rootSymTab;
 int lineNumber;
 t_bool hasError;
-char* startLabel;
-char* label1;
-char* label2;
-char* endLabel;
 
 /**
  * Functions
  */
 t_bool areNumeric(char type1, char type2);
 t_bool canAssign(struct t_type* type1, struct t_type* type2);
+t_bool canAssignToArray(struct t_type* type1, struct t_type* type2);
 struct t_symbol* createSymbol(char* name);
 struct t_symbol* lookup(char* name);
 struct t_typeexpr assignSymbol(struct t_symbol* sym, struct t_typeexpr expr);

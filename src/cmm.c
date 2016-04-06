@@ -28,6 +28,15 @@ t_bool canAssign(struct t_type* type1, struct t_type* type2) {
     return (type1->type == type2->type);
 }
 
+t_bool canAssignToArray(struct t_type* type1, struct t_type* type2) {
+    if (isTypeArray(type1) && !isTypeArray(type2)) {
+        return ((type1->type - START_ARRAY_TYPE == type2->type) ||
+                (type1->type == STRING_TYPE && type2->type == INT_TYPE));
+    }
+
+    return FALSE;
+}
+
 static unsigned symhash(char *sym) {
     unsigned int hash = 0;
     unsigned c;
@@ -109,10 +118,12 @@ void pushSymbolTable() {
 
     // Set current symbol table as the new symbol table
     currSymTab = symTab;
+    labelStackPointer++;
 }
 
 void popSymbolTable() {
     currSymTab = currSymTab->parent;
+    labelStackPointer--;
 }
 
 void _traverseSymbolTable(struct t_symtab* symtab, int depth) {

@@ -71,3 +71,22 @@ const char* transformType(struct t_type* type) {
             return "";
     }
 }
+
+const char* transformArrayType(struct t_type* type) {
+    switch(type->type) {
+        case INT_ARRAY_FUNCTION_TYPE:
+        case INT_ARRAY_TYPE:
+            return "i32";
+        case BOOL_ARRAY_FUNCTION_TYPE:
+        case BOOL_ARRAY_TYPE:
+            return "i1";
+        case DOUBLE_ARRAY_FUNCTION_TYPE:
+        case DOUBLE_ARRAY_TYPE:
+            return "double";
+        case STRING_FUNCTION_TYPE:
+        case STRING_TYPE:
+            return "i8";
+        default:
+            return "";
+    }
+}

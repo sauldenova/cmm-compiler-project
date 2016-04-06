@@ -60,8 +60,8 @@ decl : declVariable
      ;
 
 declVariable : variable SEMICOLON {
-                   if ($1->type->type == STRING_TYPE) {
-                       sprintf(str, "  %%%s = alloca [%d x i8]", $1->addr, $1->type->size);
+                   if (isTypeArray($1->type)) {
+                       sprintf(str, "  %%%s = alloca [%d x %s]", $1->addr, $1->type->size, transformArrayType($1->type));
                        emit(str);
                    } else {
                        sprintf(str, "  %%%s = alloca %s", $1->addr, transformType($1->type));
@@ -299,37 +299,37 @@ instrIfCond : expr {
                   if ($1->type->type != BOOL_TYPE) {
                       yyerror("Non-compatible types: if");
                   } else {
-                      label1 = createLabel();
-                      label2 = createLabel();
-                      endLabel = createLabel();
-                      sprintf(str, "  br i1 %s, label %%%s, label %%%s", $1->addr, label1, label2);
+                      labelStack[labelStackPointer].label1 = createLabel();
+                      labelStack[labelStackPointer].label2 = createLabel();
+                      labelStack[labelStackPointer].endLabel = createLabel();
+                      sprintf(str, "  br i1 %s, label %%%s, label %%%s", $1->addr, labelStack[labelStackPointer].label1, labelStack[labelStackPointer].label2);
                       emit(str);
-                      sprintf(str, "%s:", label1);
+                      sprintf(str, "%s:", labelStack[labelStackPointer].label1);
                       emit(str);
                   }
               }
             ;
 
 instrIfElse : %empty {
-                  sprintf(str, "  br label %%%s", endLabel);
+                  sprintf(str, "  br label %%%s", labelStack[labelStackPointer].endLabel);
                   emit(str);
-                  sprintf(str, "%s:", label2);
+                  sprintf(str, "%s:", labelStack[labelStackPointer].label2);
                   emit(str);
               }
             ;
 
 instrIfEnd : %empty {
-                 sprintf(str, "  br label %%%s", label2);
+                 sprintf(str, "  br label %%%s", labelStack[labelStackPointer].label2);
                  emit(str);
-                 sprintf(str, "%s:", label2);
+                 sprintf(str, "%s:", labelStack[labelStackPointer].label2);
                  emit(str);
              }
            ;
 
 instrIfElseEnd : %empty {
-                     sprintf(str, "  br label %%%s", endLabel);
+                     sprintf(str, "  br label %%%s", labelStack[labelStackPointer].endLabel);
                      emit(str);
-                     sprintf(str, "%s:", endLabel);
+                     sprintf(str, "%s:", labelStack[labelStackPointer].endLabel);
                      emit(str);
                  }
                ;
@@ -339,12 +339,12 @@ instrWhile : instrWhileStart WHILE LPAREN instrWhileCond RPAREN instr instrWhile
            ;
 
 instrWhileStart : %empty {
-                      startLabel = createLabel();
-                      label1 = createLabel();
-                      endLabel = createLabel();
-                      sprintf(str, "  br label %%%s", startLabel);
+                      labelStack[labelStackPointer].startLabel = createLabel();
+                      labelStack[labelStackPointer].label1 = createLabel();
+                      labelStack[labelStackPointer].endLabel = createLabel();
+                      sprintf(str, "  br label %%%s", labelStack[labelStackPointer].startLabel);
                       emit(str);
-                      sprintf(str, "%s:", startLabel);
+                      sprintf(str, "%s:", labelStack[labelStackPointer].startLabel);
                       emit(str);
                   }
                 ;
@@ -353,18 +353,18 @@ instrWhileCond : expr {
                      if ($1->type->type != BOOL_TYPE) {
                          yyerror("Non-compatible types: while");
                      } else {
-                         sprintf(str, "  br i1 %s , label %%%s , label %%%s", $1->addr, label1, endLabel);
+                         sprintf(str, "  br i1 %s , label %%%s , label %%%s", $1->addr, labelStack[labelStackPointer].label1, labelStack[labelStackPointer].endLabel);
                          emit(str);
-                         sprintf(str, "%s:", label1);
+                         sprintf(str, "%s:", labelStack[labelStackPointer].label1);
                          emit(str);
                      }
                  }
                ;
 
 instrWhileEnd : %empty {
-                    sprintf(str, "  br label %%%s", startLabel);
+                    sprintf(str, "  br label %%%s", labelStack[labelStackPointer].startLabel);
                     emit(str);
-                    sprintf(str, "%s:", endLabel);
+                    sprintf(str, "%s:", labelStack[labelStackPointer].endLabel);
                     emit(str);
                 }
               ;
@@ -374,13 +374,13 @@ instrFor : FOR LPAREN optExpr instrForStart SEMICOLON instrForCond SEMICOLON opt
          ;
 
 instrForStart : %empty {
-                    startLabel = createLabel();
-                    label1 = createLabel();
-                    label2 = createLabel();
-                    endLabel = createLabel();
-                    sprintf(str, "  br label %%%s", startLabel);
+                    labelStack[labelStackPointer].startLabel = createLabel();
+                    labelStack[labelStackPointer].label1 = createLabel();
+                    labelStack[labelStackPointer].label2 = createLabel();
+                    labelStack[labelStackPointer].endLabel = createLabel();
+                    sprintf(str, "  br label %%%s", labelStack[labelStackPointer].startLabel);
                     emit(str);
-                    sprintf(str, "%s:", startLabel);
+                    sprintf(str, "%s:", labelStack[labelStackPointer].startLabel);
                     emit(str);
                 }
               ;
@@ -389,26 +389,26 @@ instrForCond : expr {
                    if ($1->type->type != BOOL_TYPE) {
                        yyerror("Non-compatible types: for");
                    } else {
-                       sprintf(str, "  br i1 %s , label %%%s , label %%%s", $1->addr, label1, endLabel);
+                       sprintf(str, "  br i1 %s , label %%%s , label %%%s", $1->addr, labelStack[labelStackPointer].label1, labelStack[labelStackPointer].endLabel);
                        emit(str);
-                       sprintf(str, "%s:", label2);
+                       sprintf(str, "%s:", labelStack[labelStackPointer].label2);
                        emit(str);
                    }
                }
              ;
 
 instrForLabel : %empty {
-                    sprintf(str, "  br label %%%s", startLabel);
+                    sprintf(str, "  br label %%%s", labelStack[labelStackPointer].startLabel);
                     emit(str);
-                    sprintf(str, "%s:", label1);
+                    sprintf(str, "%s:", labelStack[labelStackPointer].label1);
                     emit(str);
                 }
               ;
 
 instrForEnd : %empty {
-                  sprintf(str, "  br label %%%s", label2);
+                  sprintf(str, "  br label %%%s", labelStack[labelStackPointer].label2);
                   emit(str);
-                  sprintf(str, "%s:", endLabel);
+                  sprintf(str, "%s:", labelStack[labelStackPointer].endLabel);
                   emit(str);
               }
             ;
@@ -458,8 +458,8 @@ instrPrint : PRINTDOUBLE LPAREN expr RPAREN SEMICOLON {
 expr : lValue ASSIGN expr {
            if ($1 != NULL) {
                if (!canAssign($1->type, $3->type)) {
+                   printf("lel\n");
                    yyerror("Non-compatible types: =");
-                   printf("%s,%d %s,%d\n", convertType($1->type), $1->type->size, convertType($3->type), $3->type->size);
                } else {
                    if ($1->type->type == STRING_TYPE) {
                        int size = $1->type->size;
@@ -474,13 +474,35 @@ expr : lValue ASSIGN expr {
                }
            }
        }
+     | lValue LBRACKET expr RBRACKET ASSIGN expr {
+           if ($3->type->type != INT_TYPE) {
+               yyerror("Array index is not an integer value");
+           } else if (!isTypeArray($1->type)) {
+               yyerror("Trying to access an index on a non-indexable type");
+           } else if (!canAssignToArray($1->type, $6->type)) {
+               yyerror("Non-compatible types: =");
+           } else {
+               int size = $1->type->size;
+               char* temp = createTemporal();
+               const char* arrayType = transformArrayType($1->type);
+               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %%%s, i32 0, i32 %s", temp, size, arrayType, $1->name, $3->addr);
+               emit(str);
+               sprintf(str, "  store %s %s, %s* %s", arrayType, $6->addr, arrayType, temp);
+               emit(str);
+
+               $$ = allocateInstr();
+               $$->type = copyType($6->type);
+               $$->addr = temp;
+           }
+       }
      | constant {
            $$ = $1;
        }
      | lValue {
            char* temp = createTemporal();
            if ($1->type->type == STRING_TYPE) {
-               sprintf(str, "  %s = getelementptr [%d x i8]* %%%s, i32 0, i32 0", temp, $1->type->size, $1->name);
+               int size = $1->type->size;
+               sprintf(str, "  %s = getelementptr inbounds [%d x i8]* %%%s, i32 0, i32 0", temp, size, $1->name);
                emit(str);
            } else {
                sprintf(str, "  %s = load %s* %%%s", temp, transformType($1->type), $1->name);
@@ -490,6 +512,38 @@ expr : lValue ASSIGN expr {
            $$ = allocateInstr();
            $$->type = ($1 == NULL ? '\0' : $1->type);
            $$->addr = temp;
+       }
+     | lValue LBRACKET expr RBRACKET {
+           if ($3->type->type != INT_TYPE) {
+               yyerror("Array index is not an integer value");
+           } else if (!isTypeArray($1->type)) {
+               yyerror("Trying to access an index on a non-indexable type");
+           } else {
+               $$ = allocateInstr();
+
+               int size = $1->type->size;
+               const char* arrayType = transformArrayType($1->type);
+               char* temp1 = createTemporal();
+               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %%%s, i32 0, i32 %s", temp1, size, arrayType, $1->name, $3->addr);
+               emit(str);
+               char* temp2 = createTemporal();
+               sprintf(str, "  %s = load %s* %s", temp2, arrayType, temp1);
+               emit(str);
+               if ($1->type->type == STRING_TYPE) {
+                   char* temp3 = createTemporal();
+                   sprintf(str, "  %s = sext i8 %s to i32", temp3, temp2);
+                   emit(str);
+
+                   $$->type->type = INT_TYPE;
+                   $$->type->size = $1->type->size;
+                   $$->addr = temp3;
+               } else {
+                   $$->type->type = $1->type->type - START_ARRAY_TYPE;
+                   $$->type->size = $1->type->size;
+                   $$->addr = temp2;
+               }
+
+           }
        }
      | call {
            $$ = $1;
@@ -805,10 +859,6 @@ expr : lValue ASSIGN expr {
      ;
 
 lValue : IDENTIFIER {
-             place = lookup($1);
-             $$ = (place == NULL ? NULL : place);
-         }
-       | IDENTIFIER LBRACKET expr RBRACKET {
              place = lookup($1);
              $$ = (place == NULL ? NULL : place);
          }

@@ -18,8 +18,11 @@ clean: ## Cleans the directory from the intermediate files
 
 test: build ## Runs all the tests from the test suite
 	./cmm samplePrograms/s1.cmm
+	./a.out < samplePrograms/s1.in
 	./cmm samplePrograms/s2.cmm
+	./a.out < samplePrograms/s2.in
 	./cmm samplePrograms/s3.cmm
+	./a.out
 	-./cmm samplePrograms/s4.cmm
 	-./cmm samplePrograms/s5.cmm
 	-./cmm samplePrograms/s6.cmm

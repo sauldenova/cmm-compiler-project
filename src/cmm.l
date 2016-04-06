@@ -62,6 +62,9 @@
 ")"                                 { return(RPAREN); }
 "{"                                 { return(LBRACE); }
 "}"                                 { return(RBRACE); }
+['][A-Za-z0-9][']                   { sprintf(str, "%d", (int)yytext[1]);
+                                      yylval.val = strdup(str);
+                                      return(INTCONST); }
 ["][^\n"]*["]                       { str[0] = '\0';
                                       strcat(str, yytext + 1);
                                       int len = strlen(str);
