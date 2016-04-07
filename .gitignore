@@ -95,6 +95,8 @@ $RECYCLE.BIN/
 ### Project specifics ###
 cmm.output
 program.ll
+result
+result.ll
 out/
 .texpadtmp/
 *.zip

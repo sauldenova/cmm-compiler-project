@@ -18,12 +18,19 @@ def error(*objs):
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Compiler for the cmm language. Currently uses a LLVM backend.')
 
-    parser.add_argument('-o', dest='output', type=argparse.FileType('w'),
-                        default='a.out', metavar='output',
-                        help='The output destination file. By default this value is a.out')
+    parser.add_argument('-o', dest='output', type=argparse.FileType('a'),
+                        default='result', metavar='output',
+                        help='the output destination file. By default this value is result.{target_extension}')
+
+    parser.add_argument('--optimize', dest='optimized', action='store_true', default=False,
+                        help='optimize the generated intermediate code')
 
     parser.add_argument('source', type=argparse.FileType('r'), nargs=1,
-                        help='The source file to be compiled')
+                        help='the source file to be compiled')
+
+    parser.add_argument('--target', dest='target', type=str, default='executable',
+                        choices=['assembly', 'executable', 'intermediate'],
+                        help='tells the compiler which is the target it should generate')
 
     return parser.parse_args()
 
@@ -37,6 +44,8 @@ def find_tools():
     rm = find_executable('rm')
     if not rm:
         error('Executable rm not found, please make sure you\'re in a *nix system')
+
+    mv = find_executable('mv')
 
     llvm_as = find_executable('llvm-as')
     if not llvm_as:
@@ -54,16 +63,26 @@ def find_tools():
     if not llvm_llc:
         llvm_llc = os.path.abspath('./bin/llc')
 
+    llvm_dis = find_executable('llvm-dis')
+    if not llvm_dis:
+        llvm_dis = os.path.abspath('./bin/llvm-dis')
+
     cmm_front = os.path.abspath('./out/cmmFront')
     if not os.path.isfile(cmm_front):
         error('CMM front is not built, please build the project before continuing')
 
-    return (clang, rm, llvm_as, llvm_link, llvm_opt, llvm_llc, cmm_front)
+    return (clang, rm, mv, llvm_as, llvm_link, llvm_opt, llvm_llc, llvm_dis, cmm_front)
 
 def main():
     args = parse_arguments()
 
-    clang, rm, llvm_as, llvm_link, llvm_opt, llvm_llc, cmm_front = find_tools()
+    clang, rm, mv, llvm_as, llvm_link, llvm_opt, llvm_llc, llvm_dis, cmm_front = find_tools()
+
+    extension = ''
+    if args.target == 'assembly':
+        extension = '.s'
+    elif args.target == 'intermediate':
+        extension = '.ll'
 
     source_file = args.source[0]
     output_file = args.output
@@ -71,29 +90,55 @@ def main():
     source_file.close()
     output_file.close()
 
-    clang_flags = '-o' + output_file.name
-    llvm_link_flags = '-o=main.bc'
-    llvm_opt_flags = '-std-link-opts'
-    llvm_llc_flags = '-filetype=obj'
+    output_file_name = os.path.splitext(output_file.name)[0] + extension
 
-    return_code = subprocess.call([cmm_front, source_file.name])
-    if return_code != 0:
-        exit(1)
+    if os.path.splitext(source_file.name)[1] != '.ll':
+        return_code = subprocess.call([cmm_front, source_file.name])
+        if return_code != 0:
+            exit(1)
 
     return_code = subprocess.call([llvm_as, 'program.ll'])
     if return_code != 0:
-        error("Fatal error")
+        error("Fatal error generated code was incorrect")
 
     subprocess.call([llvm_as, 'runtime.ll'])
+
+    llvm_link_flags = '-o=main.bc'
     subprocess.call([llvm_link, llvm_link_flags, 'program.bc', 'runtime.bc'])
 
-    with open('main_opt.bc', 'w') as main_opt:
-        subprocess.call([llvm_opt, llvm_opt_flags, 'main.bc'], stdout=main_opt)
+    intermediateBitcode = 'main.bc'
+    if args.optimized:
+        intermediateBitcode = 'main_opt.bc'
+        with open('main_opt.bc', 'w') as main_opt:
+            llvm_opt_flags = '-std-link-opts'
+            subprocess.call([llvm_opt, llvm_opt_flags, 'main.bc'], stdout=main_opt)
 
-    subprocess.call([llvm_llc, llvm_llc_flags, 'main_opt.bc'])
+    if args.target == 'intermediate':
+        subprocess.call([llvm_dis, intermediateBitcode])
+        subprocess.call([mv, intermediateBitcode.replace('.bc', '.ll'), output_file_name])
+    else:
+        llvm_llc_flags = '-filetype=obj'
+        if args.target == 'assembly':
+            llvm_llc_flags = '-filetype=asm'
 
-    subprocess.call([clang, clang_flags, '-w', 'main_opt.o'])
-    subprocess.call([rm, 'program.ll', 'program.bc', 'runtime.bc', 'main.bc', 'main_opt.bc', 'main_opt.o'])
+        subprocess.call([llvm_llc, llvm_llc_flags, intermediateBitcode])
+
+        if args.target == 'assembly':
+            subprocess.call([mv, intermediateBitcode.replace('.bc', '.s'), output_file_name])
+
+        if args.target == 'executable':
+            clang_flags = '-o' + output_file_name
+            subprocess.call([clang, clang_flags, '-w', intermediateBitcode.replace('.bc', '.o')])
+
+    with open('/dev/null', 'w') as devNull:
+        subprocess.call([rm,
+                         'program.ll' if os.path.splitext(source_file.name)[1] != '.ll' else '',
+                         'program.bc',
+                         'runtime.bc',
+                         'main.bc',
+                         intermediateBitcode,
+                         intermediateBitcode.replace('.bc', '.o')],
+                        stderr=devNull)
 
     return
 

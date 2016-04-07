@@ -10,6 +10,7 @@ int main() {
     int a; int b; int c; int d;
     a = readInt();
     b = readInt();
+    c = 1;
     //c = function(a, b);
     d = 1;
     while (c < d) {

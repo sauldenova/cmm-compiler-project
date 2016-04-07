@@ -13,22 +13,22 @@ C_DEBUG_FLAGS = -DDEBUG
 build: out/cmmFront ## Compiles all the files for the executable
 
 clean: ## Cleans the directory from the intermediate files
-	-rm -rf out
-	-rm *.out
+	-rm -rf out 2> /dev/null
+	-rm result* 2> /dev/null
 
 test: build ## Runs all the tests from the test suite
 	./cmm samplePrograms/s1.cmm
-	./a.out < samplePrograms/s1.in
+	./result < samplePrograms/s1.in
 	./cmm samplePrograms/s2.cmm
-	./a.out < samplePrograms/s2.in
+	./result < samplePrograms/s2.in
 	./cmm samplePrograms/s3.cmm
-	./a.out
+	./result
 	-./cmm samplePrograms/s4.cmm
 	-./cmm samplePrograms/s5.cmm
 	-./cmm samplePrograms/s6.cmm
 	./cmm samplePrograms/s7.cmm
-	./a.out < samplePrograms/s7.in
-	-rm a.out
+	./result < samplePrograms/s7.in
+	-rm result
 
 out/:
 	mkdir out
