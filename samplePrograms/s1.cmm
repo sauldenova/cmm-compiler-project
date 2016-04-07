@@ -19,6 +19,12 @@ int main() {
     c = function(a, b);
     d = 1;
     while (c < d) {
+        int c;
+        c = 3;
+        {
+            int c;
+            c = 4;
+        }
         d = d + 1;
     }
 

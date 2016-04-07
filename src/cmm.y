@@ -78,7 +78,7 @@ variable : type IDENTIFIER {
                $$ = allocateInstr();
                free($$->type);
                $$->type = copyType($1);
-               $$->addr = $2;
+               $$->addr = place->internalName;
            }
          ;
 
@@ -291,8 +291,8 @@ instr : SEMICOLON
       | scopeStart block scopeEnd
       ;
 
-instrIf : IF LPAREN instrIfCond RPAREN scopeStart instr scopeEnd instrIfEnd %prec "then"
-        | IF LPAREN instrIfCond RPAREN scopeStart instr scopeEnd ELSE instrIfElse scopeStart instr scopeEnd instrIfElseEnd
+instrIf : IF LPAREN instrIfCond RPAREN scopeStart instr scopeEnd instrIfEnd
+        | IF LPAREN instrIfCond RPAREN scopeStart instr scopeEnd instrIfElse scopeStart instr scopeEnd instrIfElseEnd
         ;
 
 instrIfCond : expr {
@@ -310,7 +310,7 @@ instrIfCond : expr {
               }
             ;
 
-instrIfElse : %empty {
+instrIfElse : ELSE {
                   sprintf(str, "  br label %%%s", labelStack[labelStackPointer].endLabel);
                   emit(str);
                   sprintf(str, "%s:", labelStack[labelStackPointer].label2);
@@ -318,7 +318,7 @@ instrIfElse : %empty {
               }
             ;
 
-instrIfEnd : %empty {
+instrIfEnd : %empty %prec "then" {
                  sprintf(str, "  br label %%%s", labelStack[labelStackPointer].label2);
                  emit(str);
                  sprintf(str, "%s:", labelStack[labelStackPointer].label2);
@@ -458,16 +458,15 @@ instrPrint : PRINTDOUBLE LPAREN expr RPAREN SEMICOLON {
 expr : lValue ASSIGN expr {
            if ($1 != NULL) {
                if (!canAssign($1->type, $3->type)) {
-                   printf("lel\n");
                    yyerror("Non-compatible types: =");
                } else {
                    if ($1->type->type == STRING_TYPE) {
                        int size = $1->type->size;
-                       sprintf(str, "  store [%d x i8] %s , [%d x i8]* %%%s", size, convertString(size, $3->addr), size, $1->name);
+                       sprintf(str, "  store [%d x i8] %s , [%d x i8]* %%%s", size, convertString(size, $3->addr), size, $1->internalName);
                        emit(str);
                    } else {
                        const char* type = transformType($1->type);
-                       sprintf(str, "  store %s %s , %s* %%%s", type, $3->addr, type, $1->name);
+                       sprintf(str, "  store %s %s , %s* %%%s", type, $3->addr, type, $1->internalName);
                        emit(str);
                    }
                    $$ = $3;
@@ -485,7 +484,7 @@ expr : lValue ASSIGN expr {
                int size = $1->type->size;
                char* temp = createTemporal();
                const char* arrayType = transformArrayType($1->type);
-               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %%%s, i32 0, i32 %s", temp, size, arrayType, $1->name, $3->addr);
+               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %%%s, i32 0, i32 %s", temp, size, arrayType, $1->internalName, $3->addr);
                emit(str);
                sprintf(str, "  store %s %s, %s* %s", arrayType, $6->addr, arrayType, temp);
                emit(str);
@@ -502,10 +501,10 @@ expr : lValue ASSIGN expr {
            char* temp = createTemporal();
            if ($1->type->type == STRING_TYPE) {
                int size = $1->type->size;
-               sprintf(str, "  %s = getelementptr inbounds [%d x i8]* %%%s, i32 0, i32 0", temp, size, $1->name);
+               sprintf(str, "  %s = getelementptr inbounds [%d x i8]* %%%s, i32 0, i32 0", temp, size, $1->internalName);
                emit(str);
            } else {
-               sprintf(str, "  %s = load %s* %%%s", temp, transformType($1->type), $1->name);
+               sprintf(str, "  %s = load %s* %%%s", temp, transformType($1->type), $1->internalName);
                emit(str);
            }
 
@@ -524,7 +523,7 @@ expr : lValue ASSIGN expr {
                int size = $1->type->size;
                const char* arrayType = transformArrayType($1->type);
                char* temp1 = createTemporal();
-               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %%%s, i32 0, i32 %s", temp1, size, arrayType, $1->name, $3->addr);
+               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %%%s, i32 0, i32 %s", temp1, size, arrayType, $1->internalName, $3->addr);
                emit(str);
                char* temp2 = createTemporal();
                sprintf(str, "  %s = load %s* %s", temp2, arrayType, temp1);

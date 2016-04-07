@@ -12,6 +12,11 @@ int labelCount;
 int nextStat;
 char* resultingCode[1000];
 
+/**
+ * Function declarations
+ */
+struct t_symbol* _lookup(char* name);
+
 t_bool areNumeric(char type1, char type2) {
     return ((type1 == INT_TYPE || type1 == DOUBLE_TYPE) && type1 == type2);
 }
@@ -56,10 +61,20 @@ struct t_symbol* createSymbol(char* name) {
         }
     }
 
+    struct t_symbol* overshadowedSymbol = _lookup(name);
+
     // Symbol wasn't found, therefore it doesn't exist
     struct t_symbol* sym = allocateSymbol();
     sym->name = strdup(name);
     sym->count = 1;
+    if (overshadowedSymbol == NULL) {
+        sym->internalName = strdup(name);
+    } else {
+        char* internalName = allocateString(sizeof(overshadowedSymbol->internalName) + 2);
+        strcat(internalName, overshadowedSymbol->internalName);
+        strcat(internalName, "1");
+        sym->internalName = strdup(internalName);
+    }
 
     struct t_symbol_list* nextSymList = malloc(sizeof(struct t_symbol_list));
     nextSymList->next = NULL;
@@ -74,7 +89,7 @@ struct t_symbol* createSymbol(char* name) {
     return sym;
 }
 
-struct t_symbol* lookup(char* name) {
+struct t_symbol* _lookup(char* name) {
     struct t_symtab* symtab = currSymTab;
     struct t_symbol_list* symList;
     while (symtab != NULL) {
@@ -98,11 +113,19 @@ struct t_symbol* lookup(char* name) {
         symtab = symtab->parent;
     }
 
-    // Symbol wasn't found, therefore it doesn't exist
-    char str[100];
-    sprintf(str, "Symbol %s wasn't found", name);
-    yyerror(&str);
     return NULL;
+}
+
+struct t_symbol* lookup(char* name) {
+    // Symbol wasn't found, therefore it doesn't exist
+    struct t_symbol* symbol = _lookup(name);
+    if (symbol == NULL) {
+        char str[100];
+        sprintf(str, "Symbol %s wasn't found", name);
+        yyerror(&str);
+    }
+
+    return symbol;
 }
 
 void pushSymbolTable() {

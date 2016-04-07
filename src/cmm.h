@@ -35,7 +35,8 @@ struct t_instr {
 struct t_symbol {
     int count;
     int returnCount;
-    char *name;
+    char* name;
+    char* internalName;
     struct t_type* type;
     struct t_arguments_list* arguments;
 };

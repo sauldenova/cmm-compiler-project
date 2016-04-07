@@ -3,7 +3,7 @@ LEX = /usr/local/Cellar/flex/2.6.0/bin/flex
 YACC = /usr/local/Cellar/bison/3.0.4/bin/bison
 
 LEX_FLAGS = -oout/lex.yy.c
-YACC_FLAGS = -d -oout/cmm.tab.c -Wno-other
+YACC_FLAGS = -d -oout/cmm.tab.c
 C_FLAGS = -ll -ly -g -Wno-implicit-function-declaration -Isrc -Iout
 C_DEBUG_FLAGS = -DDEBUG
 
@@ -22,7 +22,7 @@ test: build ## Runs all the tests from the test suite
 	./cmm samplePrograms/s2.cmm
 	./a.out < samplePrograms/s2.in
 	./cmm samplePrograms/s3.cmm
-	./a.out
+	./a.out 1> /dev/null
 	-./cmm samplePrograms/s4.cmm
 	-./cmm samplePrograms/s5.cmm
 	-./cmm samplePrograms/s6.cmm
