@@ -1,6 +1,6 @@
 C = clang
-LEX = /usr/local/Cellar/flex/2.6.0/bin/flex
-YACC = /usr/local/Cellar/bison/3.0.4/bin/bison
+LEX = ./bin/flex
+YACC = ./bin/bison
 
 LEX_FLAGS = -oout/lex.yy.c
 YACC_FLAGS = -d -oout/cmm.tab.c
@@ -22,7 +22,7 @@ test: build ## Runs all the tests from the test suite
 	./cmm samplePrograms/s2.cmm
 	./a.out < samplePrograms/s2.in
 	./cmm samplePrograms/s3.cmm
-	./a.out 1> /dev/null
+	./a.out
 	-./cmm samplePrograms/s4.cmm
 	-./cmm samplePrograms/s5.cmm
 	-./cmm samplePrograms/s6.cmm

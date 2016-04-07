@@ -38,7 +38,5 @@ int main() {
 
     f = 1;
 
-    printInt(a);
-    printInt(b);
-    printInt(c);
+    print(a, b, c);
 }

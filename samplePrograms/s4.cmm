@@ -19,9 +19,7 @@ int main() {
     for (d = 1; c < d; d = d + 1) {
     }
 
-    printInt(a);
-    printInt(b);
-    printInt(c);
+    print(a, b, c);
 
     return 0;
 }

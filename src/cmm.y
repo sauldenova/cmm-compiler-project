@@ -20,7 +20,7 @@ extern FILE *yyin;
 }
 
 %token <val> INTCONST DOUBLECONST BOOLCONST STRINGCONST
-%token VOID INT DOUBLE BOOL STRING WHILE FOR IF ELSE RETURN PRINTINT PRINTSTRING PRINTDOUBLE READINT READLINE READDOUBLE
+%token VOID INT DOUBLE BOOL STRING WHILE FOR IF ELSE RETURN PRINT READINT READLINE READDOUBLE
 %token ADD SUB MUL DIV MOD ASSIGN
 %token LESS LESSEQ GREATER GREATEREQ EQUAL NEQUAL
 %token AND OR NOT
@@ -334,8 +334,7 @@ instrIfElseEnd : %empty {
                  }
                ;
 
-instrWhile : instrWhileStart WHILE LPAREN instrWhileCond RPAREN instr instrWhileEnd {
-             }
+instrWhile : instrWhileStart WHILE LPAREN instrWhileCond RPAREN instr instrWhileEnd
            ;
 
 instrWhileStart : %empty {
@@ -369,8 +368,7 @@ instrWhileEnd : %empty {
                 }
               ;
 
-instrFor : FOR LPAREN optExpr instrForStart SEMICOLON instrForCond SEMICOLON optExpr RPAREN instrForLabel instr instrForEnd {
-           }
+instrFor : FOR LPAREN optExpr instrForStart SEMICOLON instrForCond SEMICOLON optExpr RPAREN instrForLabel instr instrForEnd
          ;
 
 instrForStart : %empty {
@@ -429,31 +427,72 @@ instrReturn : RETURN optExpr SEMICOLON {
               }
             ;
 
-instrPrint : PRINTDOUBLE LPAREN expr RPAREN SEMICOLON {
-                 if ($3->type->type != DOUBLE_TYPE) {
-                     yyerror("Non-double arguments in printDouble expression");
-                 } else {
-                     sprintf(str, "  call void @printDouble(double %s)", $3->addr);
-                     emit(str);
-                 }
-             }
-           | PRINTINT LPAREN expr RPAREN SEMICOLON {
-                 if ($3->type->type != INT_TYPE) {
-                     yyerror("Non-int arguments in printInt expression");
-                 } else {
-                     sprintf(str, "  call void @printInt(i32 %s)", $3->addr);
-                     emit(str);
-                 }
-             }
-           | PRINTSTRING LPAREN expr RPAREN SEMICOLON {
-                 if ($3->type->type != STRING_TYPE) {
-                     yyerror("Non-string arguments in printString expression");
-                 } else {
-                     sprintf(str, "  call void @printString(i8* %s)", $3->addr);
-                     emit(str);
-                 }
-             }
+instrPrint : PRINT LPAREN printExprEnd RPAREN SEMICOLON
            ;
+
+printExprEnd : expr {
+                   if ($1->type->type == DOUBLE_TYPE) {
+                       sprintf(str, "  call void @printDouble(double %s)", $1->addr);
+                       emit(str);
+                   } else if ($1->type->type == INT_TYPE) {
+                       sprintf(str, "  call void @printInt(i32 %s)", $1->addr);
+                       emit(str);
+                   } else if ($1->type->type == STRING_TYPE) {
+                       sprintf(str, "  call void @printString(i8* %s)", $1->addr);
+                       emit(str);
+                   } else {
+                       sprintf(str, "Can\'t print type %s", convertType($1->type));
+                       yyerror(str);
+                   }
+               }
+             | printExpr expr {
+                   if ($2->type->type == DOUBLE_TYPE) {
+                       sprintf(str, "  call void @printDouble(double %s)", $2->addr);
+                       emit(str);
+                   } else if ($2->type->type == INT_TYPE) {
+                       sprintf(str, "  call void @printInt(i32 %s)", $2->addr);
+                       emit(str);
+                   } else if ($2->type->type == STRING_TYPE) {
+                       sprintf(str, "  call void @printString(i8* %s)", $2->addr);
+                       emit(str);
+                   } else {
+                       sprintf(str, "Can\'t print type %s", convertType($2->type));
+                       yyerror(str);
+                   }
+               }
+             ;
+
+printExpr : expr COLON {
+                if ($1->type->type == DOUBLE_TYPE) {
+                    sprintf(str, "  call void @printDouble(double %s)", $1->addr);
+                    emit(str);
+                } else if ($1->type->type == INT_TYPE) {
+                    sprintf(str, "  call void @printInt(i32 %s)", $1->addr);
+                    emit(str);
+                } else if ($1->type->type == STRING_TYPE) {
+                    sprintf(str, "  call void @printString(i8* %s)", $1->addr);
+                    emit(str);
+                } else {
+                    sprintf(str, "Can\'t print type %s", convertType($1->type));
+                    yyerror(str);
+                }
+            }
+          | printExpr expr COLON {
+                if ($2->type->type == DOUBLE_TYPE) {
+                    sprintf(str, "  call void @printDouble(double %s)", $2->addr);
+                    emit(str);
+                } else if ($2->type->type == INT_TYPE) {
+                    sprintf(str, "  call void @printInt(i32 %s)", $2->addr);
+                    emit(str);
+                } else if ($2->type->type == STRING_TYPE) {
+                    sprintf(str, "  call void @printString(i8* %s)", $2->addr);
+                    emit(str);
+                } else {
+                    sprintf(str, "Can\'t print type %s", convertType($2->type));
+                    yyerror(str);
+                }
+            }
+          ;
 
 expr : lValue ASSIGN expr {
            if ($1 != NULL) {
@@ -541,7 +580,6 @@ expr : lValue ASSIGN expr {
                    $$->type->size = $1->type->size;
                    $$->addr = temp2;
                }
-
            }
        }
      | call {

@@ -8,6 +8,9 @@ int fact(int n) {
 int main() {
     int n;
     n = readInt();
-    printInt(fact(n));
+    string[1] newLine;
+    newLine = "\n";
+    print(fact(n), newLine);
+
     return 0;
 }

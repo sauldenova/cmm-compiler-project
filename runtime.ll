@@ -1,27 +1,27 @@
-@dnl = internal constant [4 x i8] c"%d\0A\00"
-@fnl = internal constant [6 x i8] c"%.1f\0A\00"
 @d   = internal constant [3 x i8] c"%d\00"
 @lf  = internal constant [4 x i8] c"%lf\00"
-@s   = internal constant [4 x i8] c"%s\0A\00"
+@s   = internal constant [3 x i8] c"%s\00"
+@sn  = internal constant [4 x i8] c"%s\0A\00"
 
 declare i32 @printf(i8*, ...)
 declare i32 @scanf(i8*, ...)
 declare i32 @puts(i8*)
 
 define void @printInt(i32 %x) {
-entry:  %t0 = getelementptr [4 x i8]* @dnl, i32 0, i32 0
+entry:  %t0 = getelementptr [3 x i8]* @d, i32 0, i32 0
         call i32 (i8*, ...)* @printf(i8* %t0, i32 %x)
         ret void
 }
 
 define void @printDouble(double %x) {
-entry:  %t0 = getelementptr [6 x i8]* @fnl, i32 0, i32 0
+entry:  %t0 = getelementptr [4 x i8]* @lf, i32 0, i32 0
         call i32 (i8*, ...)* @printf(i8* %t0, double %x)
         ret void
 }
 
 define void @printString(i8* %s) {
-entry:  call i32 @puts(i8* %s)
+entry:  %t0 = getelementptr [3 x i8]* @s, i32 0, i32 0
+        call i32 (i8*, ...)* @printf(i8* %t0, i8* %s)
         ret void
 }
 
@@ -43,7 +43,7 @@ entry:  %res = alloca double
 
 define i8* @readLine() {
 entry:  %res = alloca i8*
-        %t1 = getelementptr [4 x i8]* @s, i32 0, i32 0
+        %t1 = getelementptr [4 x i8]* @sn, i32 0, i32 0
         call i32 (i8*, ...)* @scanf(i8* %t1, i8** %res)
         %t2 = load i8** %res
         ret i8* %t2

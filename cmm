@@ -40,21 +40,19 @@ def find_tools():
 
     llvm_as = find_executable('llvm-as')
     if not llvm_as:
-        if not os.path.isfile('/usr/local/Cellar/llvm/3.6.2/bin/llvm-as'):
-            error('LLVM suite not found, please install')
-        llvm_as = '/usr/local/Cellar/llvm/3.6.2/bin/llvm-as'
+        llvm_as = os.path.abspath('./bin/llvm-as')
 
     llvm_link = find_executable('llvm-link')
     if not llvm_link:
-        llvm_link = '/usr/local/Cellar/llvm/3.6.2/bin/llvm-link'
+        llvm_link = os.path.abspath('./bin/llvm-link')
 
     llvm_opt = find_executable('opt')
     if not llvm_opt:
-        llvm_opt = '/usr/local/Cellar/llvm/3.6.2/bin/opt'
+        llvm_opt = os.path.abspath('./bin/opt')
 
     llvm_llc = find_executable('llc')
     if not llvm_llc:
-        llvm_llc = '/usr/local/Cellar/llvm/3.6.2/bin/llc'
+        llvm_llc = os.path.abspath('./bin/llc')
 
     cmm_front = os.path.abspath('./out/cmmFront')
     if not os.path.isfile(cmm_front):

@@ -5,6 +5,7 @@
 \usepackage{float}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage[utf8]{inputenc}
+\usepackage{hyperref}
 
 \begin{document}
 
@@ -37,6 +38,8 @@ Para acomodar comentarios, se utilizó la instrucción \textbf{BEGIN} para deter
 
 \subsection{Modificaciones a la gramática}
 
+Para manejar los bloques de código en las instrucciones adecuadas, $if$, $for$, $while$, $block$, se insertaron expresiones $scopeStart$ y $scopeEnd$ para manejar la profundidad de las tablas de símbolos.
+
 Para poder tener las expresiones con $^+$ y $^*$ se descompusieron las expresiones de la siguiente manera:
 \\\\
 $Expr\,::=\,Term^+$
@@ -49,25 +52,29 @@ $Expr\,::=\,Term^*$
 \\
 $Expr\,::=\,\epsilon\,|\,Expr\,Term$
 \\\\
-En el caso del valorL se modificó la gramática ya que el tipo era:
+Con el propósito de generar el código intermedio correcto indexando, arreglos y \textit{strings},  se cambió  valorL y expr. El valor original era:
 \\\\
-$ValorL\,::=\,identificador\,|\,expr\,[\,expr\,]$
+$Expr\,::=\,ValorL\,|\,ValorL\,=\,Expr$
+\\
+$ValorL\,::=\,identificador\,|\,Expr\,[\,Expr\,]$
 \\\\
 se cambió a:
 \\\\
-$ValorL\,::=\,identificador\,|\,identificador\,[\,expr\,]$
+$Expr\,::=\,ValorL\,|\,ValorL\,=\,Expr\,|\,ValorL\,[\,Expr\,]\,|\,ValorL\,[\,Expr\,]\,=\,Expr$
+\\
+$ValorL\,::=\,identificador$
 \\\\
 Para poder hacer los reales y los formales, se separó la gramática en 3 para poder acomodar comas, vacíos y final sin comas.
 \\\\
-$reals\,::=\,expr^+\,,\,|\,\epsilon$
+$Reals\,::=\,Expr^+\,,\,|\,\epsilon$
 \\\\
 se cambió a:
 \\\\
-$reals\,::=\,\epsilon\,|\,realsDefEnd$
+$Reals\,::=\,\epsilon\,|\,RealsDefEnd$
 \\
-$realsDefEnd\,::=\,expr\,|\,realsDef\,expr$
+$RealsDefEnd\,::=\,expr\,|\,RealsDef\,expr$
 \\
-$realsDef\,::=\,expr\,,|\,realsDef\,expr\,,$
+$RealsDef\,::=\,expr\,,|\,RealsDef\,expr\,,$
 \\\\
 Para finalizar, en las funciones se nos presentó un problema. Para poder asegurarnos que los tipos de los \textit{returns} fueran correctos tuvimos que cambiar la gramática de esto:
 \\\\
@@ -83,6 +90,27 @@ $TipoFuncion\,::=\,tipo\,identificador$
 $|\,void\,identificador$
 \\\\
 Este cambio puede parecer minúsculo, sin embargo, nos permite que la tabla de símbolos guarde el identificador de la función para ser usado en la función de abajo.
+\\\\
+Para manejar los \textit{fors} en vez de utilizar la técnica de \textit{backpatching} se cambió la gramática y se insertaron expresiones vacías, cuyo único propósito es generar código. Por lo que las expresiones:
+\\\\
+$InstrIf\,::=\,if\,(\,Expr\,)\,Instr\,<\,else\,Instr\,>$
+\\
+$InstrWhile\,::=\,while\,(\,Expr\,)\,Instr$
+\\
+$InstrFor\,::=\,for\,(\,<\,expr\,>\,;\,Expr\,;\,<\,expr\,>\,)\,Instr$
+\\\\
+se cambiaron a:
+\\\\
+$InstrIf\,::=\,if\,(\,\mathbf{InstrIfCond}\,)\,Instr\,\mathbf{InstrIfEnd}$
+\\
+$InstrIf\,::=\,if\,(\,\mathbf{InstrIfCond}\,)\,Instr\,\mathbf{InstrIfElse}\,else\,Instr\,\mathbf{InstrIfElseEnd}$
+\\
+$InstrWhile\,::=\,\mathbf{InstrWhileStart}\,while\,(\,\mathbf{InstrWhileCond}\,)\,Instr\,\mathbf{InstrWhileEnd}$
+\\
+$InstrFor\,::=\,for\,(\,<\,expr\,>\,\mathbf{InstrForStart}\,;\,\mathbf{InstrForCond}\,;\,<\,expr\,>\,)$
+\\
+$>\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\mathbf{InstrForLabel}\,Instr\,\mathbf{InstrForEnd}$
+\\\\
 
 \subsection{Tabla de símbolos}
 
@@ -104,13 +132,49 @@ Las tablas utilizan los hashes de los símbolos. Si hay colisiones utiliza una l
 Los símbolos incluyen un nombre, un tipo y un contador de las veces que se accesa la variable. Tenemos una función lookup que 
 busca recursivamente los símbolos, por lo tanto tenemos overshadowing.
 
+\subsection{Manejo de tipos}
+
+Para manejar los diferentes tipos que se pueden programar en cmm: $int$, $bool$, $double$, $string[]$, $int[]$, $bool[]$, $double[]$, se definieron constantes enteras para identificar los tipos.
+
+\subsection{Generación de código intermedio}
+
+Al momento de generar el código intermedio se consideraron muchas alternativas. En nuestro caso se utilizó el lenguaje intermedio de LLVM (\url{http://llvm.org/releases/3.6.2/docs/LangRef.html}). LLVM es una colección de herramientas que utilizan muchas empresas y lenguajes para compilar sus propios programas.
+
+\subsubsection{Runtime}
+
+Es necesario declarar un archivo que declare las implementaciones de las funciones incluidas en el lenguaje. Este archivo implementa las funciones \textbf{printInt}, \textbf{printDouble}, \textbf{printString} que utiliza internamente la función \textbf{print}. El archivo está escrito en el lenguaje intermedio.
+
+\subsection{Arquitectura}
+
+\begin{figure}[H]
+    \centering
+    \epsfig{figure=images/architecture.png,width=6in}
+    \caption{Arquitectura del compilador}
+    \label{fig:arch}
+\end{figure}
+
+Esta arquitectura corre en serie. Es decir el programa de hasta la izquierda recibe el archivo de input, corre el \textit{front end} y genera el archivo \textbf{program.ll}. Las herramientas realizan lo siguiente:
+
+\begin{enumerate}
+	\item \textbf{out/cmmFront}: Corre el \textit{front end} que incluye el parser, el scanner y genera el código intermedio.
+	\item \textbf{llvm-as}: Convierte el código intermedio a bitcode.
+	\item \textbf{llvm-link}: \textit{Linkea} los programas en bitcode.
+	\item \textbf{opt}: Optimiza el programa \textit{linkeado} por \textbf{llvm-link}.
+	\item \textbf{llc}: Corre el \textit{back end} y genera un archivo de objeto \textbf{.o}
+	\item \textbf{clang}: Corre el linker de otro compilador para \textit{linkear} el \textbf{.o} con las \textit{librerías} del sistema y generar un ejecutable.
+\end{enumerate}
+
+\subsection{Overshadowing de variables}
+
+Para manejar overshadowing de variables, generamos nombres diferentes en el archivo intermedio. Internamente en el \textit{front end} utilizamos una estructura \textbf{t\_symbol} que tiene dos cambios, \textbf{internalName} y \textbf{name}. \textbf{internalName} se asigna de acuerdo a las variables con el mismo nombre definidas en el bloque padre.
+
+\pagebreak
+
 \section{Manual de usuario}
 
 \subsection{Compilación}
 
-Para compilar el programa tenemos un Makefile. Lo único que es necesario hacer es entrar al Makefile y modificar las siguientes 
-variables: (\textbf{LEX}, \textbf{YACC}, \textbf{C}) y que apunten a los programas adecuados. Generalmente en sistemas unix van 
-a ser: (\textbf{flex}, \textbf{bison}, \textbf{gcc}).
+Para compilar el programa tenemos un Makefile. Este archivo tiene las siguientes opciones:e
 \\\\
 El comando \textbf{make} o \textbf{make help} muestran la documentación correspondiente de las opciones de make.
 \\\\
@@ -122,18 +186,19 @@ Para limpiar los ejecutables utiliza el comando: \textbf{make clean}.
 
 \subsection{Corrimiento programa}
 
-Lo anterior te va a generar un ejecutable llamado \textbf{cmm}. El comando recibe un sólo argumento, el nombre del archivo a 
-verificar. Por ejemplo, si queremos verificar el archivo \textbf{sampleProgram.cmm} se utilizaría el comando: 
-\textbf{./cmm sampleProgram.cmm}. El programa puede imprimir dos posibles opciones:
-\\\\
-\textbf{Expression accepted.}
-\\
-\textbf{Printing symbols table}
-\\\\
-Después de esto se va a imprimir la tabla de símbolos. El otro caso es:
-\\\\
-\textbf{Error: 'error aquí'}
-\\\\
-Se va a imprimir toda la lista de errores que se encontraron en el programa.
+Para compilar un programa utilizamos el comando \textbf{cmm}. El compilador tiene la siguiente ayuda:
+ 
+\begin{verbatim}
+usage: cmm [-h] [-o output] source
+
+Compiler for the cmm language. Currently uses a LLVM backend.
+
+positional arguments:
+  source      The source file to be compiled
+
+optional arguments:
+  -h, --help  show this help message and exit
+  -o output   The output destination file. By default this value is a.out
+\end{verbatim}
 
 \end{document}

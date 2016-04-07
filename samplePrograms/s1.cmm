@@ -49,9 +49,12 @@ int main() {
     f = true;
     f = !f;
 
-    printInt(a);
-    printInt(b);
-    printInt(c);
+    string[1] space;
+    space = " ";
+    string[1] newLine;
+    newLine = "\n";
+
+    print(a, space, b, space, c, newLine);
 
     return 0;
 }
