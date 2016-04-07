@@ -189,16 +189,23 @@ Para limpiar los ejecutables utiliza el comando: \textbf{make clean}.
 Para compilar un programa utilizamos el comando \textbf{cmm}. El compilador tiene la siguiente ayuda:
  
 \begin{verbatim}
-usage: cmm [-h] [-o output] source
+usage: cmm [-h] [-o output] [--optimize]
+           [--target {assembly,executable,intermediate}]
+           source
 
 Compiler for the cmm language. Currently uses a LLVM backend.
 
 positional arguments:
-  source      The source file to be compiled
+  source                the source file to be compiled
 
 optional arguments:
-  -h, --help  show this help message and exit
-  -o output   The output destination file. By default this value is a.out
+  -h, --help            show this help message and exit
+  -o output             the output destination file. By default this value is
+                        result.{target_extension}
+  --optimize            optimize the generated intermediate code
+  --target {assembly,executable,intermediate}
+                        tells the compiler which is the target it should
+                        generate
 \end{verbatim}
 
 \end{document}
