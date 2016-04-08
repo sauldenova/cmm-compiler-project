@@ -19,7 +19,7 @@ int main() {
 
     for(i = 0; i < 10; i = i + 1) {
         b[i] = 10.0;
-        c[i] = i;
+        c[i] = 3 * i;
         if (i % 2 == 0) {
             d[i] = false;
         } else {

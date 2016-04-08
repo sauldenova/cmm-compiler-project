@@ -18,8 +18,7 @@ def error(*objs):
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Compiler for the cmm language. Currently uses a LLVM backend.')
 
-    parser.add_argument('-o', dest='output', type=argparse.FileType('a'),
-                        default='result', metavar='output',
+    parser.add_argument('-o', dest='output', type=str, default='result',
                         help='the output destination file. By default this value is result.{target_extension}')
 
     parser.add_argument('--optimize', dest='optimized', action='store_true', default=False,
@@ -88,9 +87,8 @@ def main():
     output_file = args.output
 
     source_file.close()
-    output_file.close()
 
-    output_file_name = os.path.splitext(output_file.name)[0] + extension
+    output_file_name = os.path.splitext(output_file)[0] + extension
 
     if os.path.splitext(source_file.name)[1] != '.ll':
         return_code = subprocess.call([cmm_front, source_file.name])
