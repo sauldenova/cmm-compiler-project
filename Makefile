@@ -28,6 +28,8 @@ test: build ## Runs all the tests from the test suite
 	-./cmm samplePrograms/s6.cmm
 	./cmm samplePrograms/s7.cmm
 	./result < samplePrograms/s7.in
+	./cmm samplePrograms/s8.cmm
+	./result
 	-rm result
 
 out/:

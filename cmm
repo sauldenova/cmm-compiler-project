@@ -24,12 +24,18 @@ def parse_arguments():
     parser.add_argument('--optimize', dest='optimized', action='store_true', default=False,
                         help='optimize the generated intermediate code')
 
-    parser.add_argument('source', type=argparse.FileType('r'), nargs=1,
-                        help='the source file to be compiled')
-
     parser.add_argument('--target', dest='target', type=str, default='executable',
                         choices=['assembly', 'executable', 'intermediate'],
                         help='tells the compiler which is the target it should generate')
+
+    parser.add_argument('--arch', dest='arch', type=str, default='current',
+                        choices=['mips', 'current'],
+                        help='tells the compiler the target architecure you\
+                        want for your output. If the target doesn\'t generate\
+                        code, this flag is ignored')
+
+    parser.add_argument('source', type=argparse.FileType('r'), nargs=1,
+                        help='the source file to be compiled')
 
     return parser.parse_args()
 
@@ -104,29 +110,36 @@ def main():
     llvm_link_flags = '-o=main.bc'
     subprocess.call([llvm_link, llvm_link_flags, 'program.bc', 'runtime.bc'])
 
-    intermediateBitcode = 'main.bc'
+    intermediate_bitcode = 'main.bc'
     if args.optimized:
-        intermediateBitcode = 'main_opt.bc'
+        intermediate_bitcode = 'main_opt.bc'
         with open('main_opt.bc', 'w') as main_opt:
             llvm_opt_flags = '-std-link-opts'
             subprocess.call([llvm_opt, llvm_opt_flags, 'main.bc'], stdout=main_opt)
 
     if args.target == 'intermediate':
-        subprocess.call([llvm_dis, intermediateBitcode])
-        subprocess.call([mv, intermediateBitcode.replace('.bc', '.ll'), output_file_name])
+        subprocess.call([llvm_dis, intermediate_bitcode])
+        subprocess.call([mv, intermediate_bitcode.replace('.bc', '.ll'), output_file_name])
     else:
         llvm_llc_flags = '-filetype=obj'
         if args.target == 'assembly':
             llvm_llc_flags = '-filetype=asm'
 
-        subprocess.call([llvm_llc, llvm_llc_flags, intermediateBitcode])
+        if args.arch == 'mips':
+            llvm_llc_flags += ' -march=mipsel -relocation-model=static'
+
+        llvm_llc_args = [llvm_llc]
+        llvm_llc_args.extend(llvm_llc_flags.split(' '))
+        llvm_llc_args.append(intermediate_bitcode)
+
+        subprocess.call(llvm_llc_args)
 
         if args.target == 'assembly':
-            subprocess.call([mv, intermediateBitcode.replace('.bc', '.s'), output_file_name])
+            subprocess.call([mv, intermediate_bitcode.replace('.bc', '.s'), output_file_name])
 
         if args.target == 'executable':
             clang_flags = '-o' + output_file_name
-            subprocess.call([clang, clang_flags, '-w', intermediateBitcode.replace('.bc', '.o')])
+            subprocess.call([clang, clang_flags, '-w', intermediate_bitcode.replace('.bc', '.o')])
 
     with open('/dev/null', 'w') as devNull:
         subprocess.call([rm,
@@ -134,8 +147,8 @@ def main():
                          'program.bc',
                          'runtime.bc',
                          'main.bc',
-                         intermediateBitcode,
-                         intermediateBitcode.replace('.bc', '.o')],
+                         intermediate_bitcode,
+                         intermediate_bitcode.replace('.bc', '.o')],
                         stderr=devNull)
 
     return

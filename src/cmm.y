@@ -5,6 +5,7 @@
 #include "cmm_types.h"
 
 extern FILE *yyin;
+void generatePrints(struct t_instr* instr);
 %}
 
 %define parse.lac full
@@ -55,16 +56,46 @@ start : decl
       | start decl
       ;
 
-decl : declVariable
+decl : declGlobalVariable
      | declFunction
      ;
 
+declGlobalVariable : variable SEMICOLON {
+                         if ($1->type->type == STRING_TYPE) {
+                             sprintf(str,
+                                     "%s = global [%d x %s] zeroinitializer",
+                                     $1->addr,
+                                     $1->type->size,
+                                     transformArrayType($1->type));
+
+                             emit(str);
+                         } else if (isTypeArray($1->type)) {
+                             const char* arrayType = transformArrayType($1->type);
+
+                             sprintf(str,
+                                     "%s = global [%d x %s] zeroinitializer",
+                                     $1->addr,
+                                     $1->type->size,
+                                     arrayType);
+
+                             emit(str);
+                         } else {
+                             sprintf(str,
+                                     "%s = global %s 0",
+                                     $1->addr,
+                                     transformType($1->type));
+
+                             emit(str);
+                         }
+                     }
+                   ;
+
 declVariable : variable SEMICOLON {
                    if (isTypeArray($1->type)) {
-                       sprintf(str, "  %%%s = alloca [%d x %s]", $1->addr, $1->type->size, transformArrayType($1->type));
+                       sprintf(str, "  %s = alloca [%d x %s]", $1->addr, $1->type->size, transformArrayType($1->type));
                        emit(str);
                    } else {
-                       sprintf(str, "  %%%s = alloca %s", $1->addr, transformType($1->type));
+                       sprintf(str, "  %s = alloca %s", $1->addr, transformType($1->type));
                        emit(str);
                    }
                }
@@ -208,7 +239,7 @@ formalsDefEnd : variable {
                     char* addr = allocateString(strlen($1->addr) + 50);
                     strcat(addr, transformType($1->type));
                     strcat(addr, " %__p__");
-                    strcat(addr, $1->addr);
+                    strcat(addr, $1->addr + 1);
 
                     $$ = allocateInstr();
                     $$->args = arguments;
@@ -224,7 +255,7 @@ formalsDefEnd : variable {
                     strcat(addr, " , ");
                     strcat(addr, transformType($1->type));
                     strcat(addr, " %__p__");
-                    strcat(addr, $2->addr);
+                    strcat(addr, $2->addr + 1);
 
                     $$ = allocateInstr();
                     $$->args = arguments;
@@ -240,7 +271,7 @@ formalsDef : variable COLON {
                  char* addr = allocateString(strlen($1->addr) + 50);
                  strcat(addr, transformType($1->type));
                  strcat(addr, " %__p__");
-                 strcat(addr, $1->addr);
+                 strcat(addr, $1->addr + 1);
 
                  $$ = allocateInstr();
                  $$->args = arguments;
@@ -256,7 +287,7 @@ formalsDef : variable COLON {
                  strcat(addr, " , ");
                  strcat(addr, transformType($1->type));
                  strcat(addr, " %__p__");
-                 strcat(addr, $2->addr);
+                 strcat(addr, $2->addr + 1);
 
                  $$ = allocateInstr();
                  $$->args = arguments;
@@ -431,66 +462,18 @@ instrPrint : PRINT LPAREN printExprEnd RPAREN SEMICOLON
            ;
 
 printExprEnd : expr {
-                   if ($1->type->type == DOUBLE_TYPE) {
-                       sprintf(str, "  call void @printDouble(double %s)", $1->addr);
-                       emit(str);
-                   } else if ($1->type->type == INT_TYPE) {
-                       sprintf(str, "  call void @printInt(i32 %s)", $1->addr);
-                       emit(str);
-                   } else if ($1->type->type == STRING_TYPE) {
-                       sprintf(str, "  call void @printString(i8* %s)", $1->addr);
-                       emit(str);
-                   } else {
-                       sprintf(str, "Can\'t print type %s", convertType($1->type));
-                       yyerror(str);
-                   }
+                   generatePrints($1);
                }
              | printExpr expr {
-                   if ($2->type->type == DOUBLE_TYPE) {
-                       sprintf(str, "  call void @printDouble(double %s)", $2->addr);
-                       emit(str);
-                   } else if ($2->type->type == INT_TYPE) {
-                       sprintf(str, "  call void @printInt(i32 %s)", $2->addr);
-                       emit(str);
-                   } else if ($2->type->type == STRING_TYPE) {
-                       sprintf(str, "  call void @printString(i8* %s)", $2->addr);
-                       emit(str);
-                   } else {
-                       sprintf(str, "Can\'t print type %s", convertType($2->type));
-                       yyerror(str);
-                   }
+                   generatePrints($2);
                }
              ;
 
 printExpr : expr COLON {
-                if ($1->type->type == DOUBLE_TYPE) {
-                    sprintf(str, "  call void @printDouble(double %s)", $1->addr);
-                    emit(str);
-                } else if ($1->type->type == INT_TYPE) {
-                    sprintf(str, "  call void @printInt(i32 %s)", $1->addr);
-                    emit(str);
-                } else if ($1->type->type == STRING_TYPE) {
-                    sprintf(str, "  call void @printString(i8* %s)", $1->addr);
-                    emit(str);
-                } else {
-                    sprintf(str, "Can\'t print type %s", convertType($1->type));
-                    yyerror(str);
-                }
+                generatePrints($1);
             }
           | printExpr expr COLON {
-                if ($2->type->type == DOUBLE_TYPE) {
-                    sprintf(str, "  call void @printDouble(double %s)", $2->addr);
-                    emit(str);
-                } else if ($2->type->type == INT_TYPE) {
-                    sprintf(str, "  call void @printInt(i32 %s)", $2->addr);
-                    emit(str);
-                } else if ($2->type->type == STRING_TYPE) {
-                    sprintf(str, "  call void @printString(i8* %s)", $2->addr);
-                    emit(str);
-                } else {
-                    sprintf(str, "Can\'t print type %s", convertType($2->type));
-                    yyerror(str);
-                }
+                generatePrints($2);
             }
           ;
 
@@ -501,11 +484,11 @@ expr : lValue ASSIGN expr {
                } else {
                    if ($1->type->type == STRING_TYPE) {
                        int size = $1->type->size;
-                       sprintf(str, "  store [%d x i8] %s , [%d x i8]* %%%s", size, convertString(size, $3->addr), size, $1->internalName);
+                       sprintf(str, "  store [%d x i8] %s , [%d x i8]* %s", size, convertString(size, $3->addr), size, $1->internalName);
                        emit(str);
                    } else {
                        const char* type = transformType($1->type);
-                       sprintf(str, "  store %s %s , %s* %%%s", type, $3->addr, type, $1->internalName);
+                       sprintf(str, "  store %s %s , %s* %s", type, $3->addr, type, $1->internalName);
                        emit(str);
                    }
                    $$ = $3;
@@ -523,7 +506,7 @@ expr : lValue ASSIGN expr {
                int size = $1->type->size;
                char* temp = createTemporal();
                const char* arrayType = transformArrayType($1->type);
-               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %%%s, i32 0, i32 %s", temp, size, arrayType, $1->internalName, $3->addr);
+               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %s, i32 0, i32 %s", temp, size, arrayType, $1->internalName, $3->addr);
                emit(str);
                sprintf(str, "  store %s %s, %s* %s", arrayType, $6->addr, arrayType, temp);
                emit(str);
@@ -540,10 +523,10 @@ expr : lValue ASSIGN expr {
            char* temp = createTemporal();
            if ($1->type->type == STRING_TYPE) {
                int size = $1->type->size;
-               sprintf(str, "  %s = getelementptr inbounds [%d x i8]* %%%s, i32 0, i32 0", temp, size, $1->internalName);
+               sprintf(str, "  %s = getelementptr inbounds [%d x i8]* %s, i32 0, i32 0", temp, size, $1->internalName);
                emit(str);
            } else {
-               sprintf(str, "  %s = load %s* %%%s", temp, transformType($1->type), $1->internalName);
+               sprintf(str, "  %s = load %s* %s", temp, transformType($1->type), $1->internalName);
                emit(str);
            }
 
@@ -562,7 +545,7 @@ expr : lValue ASSIGN expr {
                int size = $1->type->size;
                const char* arrayType = transformArrayType($1->type);
                char* temp1 = createTemporal();
-               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %%%s, i32 0, i32 %s", temp1, size, arrayType, $1->internalName, $3->addr);
+               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %s, i32 0, i32 %s", temp1, size, arrayType, $1->internalName, $3->addr);
                emit(str);
                char* temp2 = createTemporal();
                sprintf(str, "  %s = load %s* %s", temp2, arrayType, temp1);
@@ -866,6 +849,7 @@ expr : lValue ASSIGN expr {
      | READINT LPAREN RPAREN {
            char* temp = createTemporal();
 
+           readUsed[0] = TRUE;
            sprintf(str, "  %s = call i32 @readInt()", temp);
            emit(str);
 
@@ -876,6 +860,7 @@ expr : lValue ASSIGN expr {
      | READDOUBLE LPAREN RPAREN {
            char* temp = createTemporal();
 
+           readUsed[1] = TRUE;
            sprintf(str, "  %s = call i32 @readDouble()", temp);
            emit(str);
 
@@ -886,6 +871,7 @@ expr : lValue ASSIGN expr {
      | READLINE LPAREN RPAREN {
            char* temp = createTemporal();
 
+           readUsed[2] = TRUE;
            sprintf(str, "  %s = call i32 @readLine()", temp);
            emit(str);
 
@@ -1027,6 +1013,47 @@ scopeEnd : %empty {
 
 %%
 
+void generatePrints(struct t_instr* instr) {
+    if (instr->type->type == DOUBLE_TYPE) {
+        printUsed[1] = TRUE;
+        sprintf(str, "  call void @printDouble(double %s)", instr->addr);
+        emit(str);
+    } else if (instr->type->type == INT_TYPE) {
+        printUsed[0] = TRUE;
+        sprintf(str, "  call void @printInt(i32 %s)", instr->addr);
+        emit(str);
+    } else if (instr->type->type == STRING_TYPE) {
+        printUsed[2] = TRUE;
+        char* addr = instr->addr;
+        if (instr->addr[0] != '@' && instr->addr[0] != '%') {
+            char* internalName = createStringConstant()->internalName;
+            addr = createTemporal();
+
+            sprintf(str,
+                    "%s = getelementptr [%d x i8]* %s, i32 0, i32 0",
+                    addr,
+                    instr->type->size,
+                    internalName);
+
+            emit(str);
+
+            sprintf(str,
+                    "%s = internal constant [%d x i8] %s",
+                    internalName,
+                    instr->type->size,
+                    convertString(instr->type->size, instr->addr));
+
+            emitConstant(str);
+        }
+
+        sprintf(str, "  call void @printString(i8* %s)", addr);
+        emit(str);
+    } else {
+        sprintf(str, "Can\'t print type %s", convertType(instr->type));
+        yyerror(str);
+    }
+}
+
 int main(int argc, char **argv) {
     if(argc > 1) {
         if(!(yyin = fopen(argv[1], "r"))) {
@@ -1036,7 +1063,6 @@ int main(int argc, char **argv) {
     }
 
     initializeSymbolTable();
-    emitHeader();
 
     yyparse();
     if (hasError) {

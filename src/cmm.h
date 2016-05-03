@@ -79,6 +79,8 @@ struct t_symtab* currSymTab;
 struct t_symtab* rootSymTab;
 int lineNumber;
 t_bool hasError;
+t_bool printUsed[3];
+t_bool readUsed[3];
 
 /**
  * Functions
@@ -87,12 +89,13 @@ t_bool areNumeric(char type1, char type2);
 t_bool canAssign(struct t_type* type1, struct t_type* type2);
 t_bool canAssignToArray(struct t_type* type1, struct t_type* type2);
 struct t_symbol* createSymbol(char* name);
+struct t_symbol* createStringConstant();
 struct t_symbol* lookup(char* name);
 struct t_typeexpr assignSymbol(struct t_symbol* sym, struct t_typeexpr expr);
 void pushSymbolTable();
 void popSymbolTable();
+void emitConstant(char* code);
 void emit(char* code);
-void emitHeader();
 void writeCodeToFile(FILE* outputFile);
 char* createTemporal();
 char* createLabel();

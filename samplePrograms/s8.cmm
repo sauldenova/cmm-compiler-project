@@ -1,0 +1,11 @@
+string[13] helloWorld;
+int a;
+int[13] b;
+
+int main() {
+    helloWorld = "Hello World!\n";
+    a = 10;
+    b[0] = 32;
+    print(helloWorld, a, " ", b[0], "\n");
+    return 0;
+}

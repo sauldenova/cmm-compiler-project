@@ -1,16 +1,10 @@
 int main() {
-    string[1] space;
-    space = " ";
-    string[1] newLine;
-    newLine = "\n";
-    string[2] start;
-    start = "> ";
     string[100] a;
     a = "This is a constant string";
 
     a[4] = 'A';
 
-    print(a, space, a[3], newLine);
+    print(a, " ", a[3], "\n");
 
     double[10] b;
     int[10] c;
@@ -28,14 +22,14 @@ int main() {
     }
 
     for(i = 0; i < 10; i = i + 1) {
-        print(i, start, b[i], space, c[i], space);
+        print(i, "> ", b[i], " ", c[i], " ");
         if (d[i]) {
             print(1);
         } else {
             print(0);
         }
 
-        print(newLine);
+        print("\n");
     }
 
     return 0;

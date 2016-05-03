@@ -49,12 +49,7 @@ int main() {
     f = true;
     f = !f;
 
-    string[1] space;
-    space = " ";
-    string[1] newLine;
-    newLine = "\n";
-
-    print(a, space, b, space, c, newLine);
+    print(a, " ", b, " ", c, "\n");
 
     return 0;
 }

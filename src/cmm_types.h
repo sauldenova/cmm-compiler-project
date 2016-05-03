@@ -3,8 +3,8 @@
 
 typedef char t_bool;
 
-#define TRUE 0
-#define FALSE 1
+#define TRUE 1
+#define FALSE 0
 
 // Type structure definition
 struct t_type {

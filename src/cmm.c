@@ -5,44 +5,23 @@
 #include "cmm.h"
 #include "cmm_types.h"
 
-int nnew, nold;
-int nprobe;
-int temporalCount;
-int labelCount;
-int nextStat;
-char* resultingCode[1000];
+/**
+ * Static variable declarations
+ */
+static int nnew, nold;
+static int nprobe;
+static int temporalCount;
+static int labelCount;
+static int nextLOC;
+static int nextConstant;
+static int stringConstantCount;
+static char* constants[100];
+static char* resultingCode[10000];
 
 /**
- * Function declarations
+ * Static function declarations
  */
-struct t_symbol* _lookup(char* name);
-
-t_bool areNumeric(char type1, char type2) {
-    return ((type1 == INT_TYPE || type1 == DOUBLE_TYPE) && type1 == type2);
-}
-
-t_bool canAssign(struct t_type* type1, struct t_type* type2) {
-    if (type1->type == STRING_TYPE && type2->type == STRING_TYPE) {
-        return (type1->size >= type2->size);
-    }
-
-    if (isTypeArray(type1) && isTypeArray(type2)) {
-        return (type1->type == type2->type && type1->size >= type2->size);
-    }
-
-    return (type1->type == type2->type);
-}
-
-t_bool canAssignToArray(struct t_type* type1, struct t_type* type2) {
-    if (isTypeArray(type1) && !isTypeArray(type2)) {
-        return ((type1->type - START_ARRAY_TYPE == type2->type) ||
-                (type1->type == STRING_TYPE && type2->type == INT_TYPE));
-    }
-
-    return FALSE;
-}
-
-static unsigned symhash(char *sym) {
+static unsigned _symHash(char *sym) {
     unsigned int hash = 0;
     unsigned c;
 
@@ -53,47 +32,11 @@ static unsigned symhash(char *sym) {
     return hash;
 }
 
-struct t_symbol* createSymbol(char* name) {
-    struct t_symbol_list* symList = currSymTab->symbols[symhash(name) % NHASH];
-    if (symList != NULL) {
-        while (symList->next != NULL) {
-            symList = symList->next;
-        }
-    }
-
-    struct t_symbol* overshadowedSymbol = _lookup(name);
-
-    // Symbol wasn't found, therefore it doesn't exist
-    struct t_symbol* sym = allocateSymbol();
-    sym->name = strdup(name);
-    sym->count = 1;
-    if (overshadowedSymbol == NULL) {
-        sym->internalName = strdup(name);
-    } else {
-        char* internalName = allocateString(sizeof(overshadowedSymbol->internalName) + 2);
-        strcat(internalName, overshadowedSymbol->internalName);
-        strcat(internalName, "1");
-        sym->internalName = strdup(internalName);
-    }
-
-    struct t_symbol_list* nextSymList = malloc(sizeof(struct t_symbol_list));
-    nextSymList->next = NULL;
-    nextSymList->symbol = sym;
-
-    if (symList != NULL) {
-        symList->next = nextSymList;
-    } else {
-        currSymTab->symbols[symhash(name) % NHASH] = nextSymList;
-    }
-
-    return sym;
-}
-
-struct t_symbol* _lookup(char* name) {
+static struct t_symbol* _lookup(char* name) {
     struct t_symtab* symtab = currSymTab;
     struct t_symbol_list* symList;
     while (symtab != NULL) {
-        symList = symtab->symbols[symhash(name) % NHASH];
+        symList = symtab->symbols[_symHash(name) % NHASH];
         if (symList != NULL) {
             while (symList->next != NULL) {
                 if (strcmp(symList->symbol->name, name) == 0) {
@@ -116,40 +59,48 @@ struct t_symbol* _lookup(char* name) {
     return NULL;
 }
 
-struct t_symbol* lookup(char* name) {
-    // Symbol wasn't found, therefore it doesn't exist
-    struct t_symbol* symbol = _lookup(name);
-    if (symbol == NULL) {
-        char str[100];
-        sprintf(str, "Symbol %s wasn't found", name);
-        yyerror(&str);
+static char* _generateNonCollisioningSymbol(t_bool isGlobal, char* name) {
+    struct t_symbol* overshadowedSymbol = _lookup(name);
+
+    if (isGlobal) {
+        sprintf(str, "@");
+    } else {
+        sprintf(str, "%%");
     }
 
-    return symbol;
+    if (overshadowedSymbol == NULL) {
+        strcat(str + 1, name);
+    } else {
+        do {
+            int number;
+            int length = strlen(overshadowedSymbol->internalName);
+            while ('0' <= overshadowedSymbol->internalName[length - 1] &&
+                    overshadowedSymbol->internalName[length - 1] <= '9') {
+                length--;
+            }
+
+            int numberSize = strlen(overshadowedSymbol->internalName) - length;
+
+            if (numberSize > 0) {
+                sscanf(overshadowedSymbol->internalName + length, "%d", &number);
+            } else {
+                number = 0;
+            }
+
+            number++;
+
+            sprintf(str + 1, "%s", overshadowedSymbol->internalName + 1);
+            sprintf(str + strlen(str) - numberSize, "%d", number);
+
+            // Let's check if the symbol we defined doesn't exist
+            overshadowedSymbol = _lookup(str);
+        } while(overshadowedSymbol != NULL);
+    }
+
+    return strdup(str);
 }
 
-void pushSymbolTable() {
-    // Create and set new symbol table
-    struct t_symtab* symTab = malloc(sizeof(struct t_symtab));
-    symTab->parent = currSymTab;
-
-    // Add to children list
-    struct t_symtab_list* newList = malloc(sizeof(struct t_symtab_list));
-    newList->elem = symTab;
-    newList->next = currSymTab->children;
-    currSymTab->children = newList;
-
-    // Set current symbol table as the new symbol table
-    currSymTab = symTab;
-    labelStackPointer++;
-}
-
-void popSymbolTable() {
-    currSymTab = currSymTab->parent;
-    labelStackPointer--;
-}
-
-void _traverseSymbolTable(struct t_symtab* symtab, int depth) {
+static void _traverseSymbolTable(struct t_symtab* symtab, int depth) {
     for (int i = 0; i < depth; i++) {
         printf("  ");
     }
@@ -191,15 +142,118 @@ void _traverseSymbolTable(struct t_symtab* symtab, int depth) {
     }
 }
 
+/**
+ * Non-static function declarations
+ */
+
+t_bool areNumeric(char type1, char type2) {
+    return ((type1 == INT_TYPE || type1 == DOUBLE_TYPE) && type1 == type2);
+}
+
+t_bool canAssign(struct t_type* type1, struct t_type* type2) {
+    if (type1->type == STRING_TYPE && type2->type == STRING_TYPE) {
+        return (type1->size >= type2->size);
+    }
+
+    if (isTypeArray(type1) && isTypeArray(type2)) {
+        return (type1->type == type2->type && type1->size >= type2->size);
+    }
+
+    return (type1->type == type2->type);
+}
+
+t_bool canAssignToArray(struct t_type* type1, struct t_type* type2) {
+    if (isTypeArray(type1) && !isTypeArray(type2)) {
+        return ((type1->type - START_ARRAY_TYPE == type2->type) ||
+                (type1->type == STRING_TYPE && type2->type == INT_TYPE));
+    }
+
+    return FALSE;
+}
+
+struct t_symbol* createStringConstant() {
+    struct t_symtab* storeSymTab = currSymTab;
+    currSymTab = rootSymTab;
+
+    sprintf(str, "string_constant%d", stringConstantCount++);
+    struct t_symbol* sym = createSymbol(strdup(str));
+
+    currSymTab = storeSymTab;
+
+    return sym;
+}
+
+
+struct t_symbol* createSymbol(char* name) {
+    struct t_symbol* sym = allocateSymbol();
+    sym->name = strdup(name);
+    sym->count = 1;
+    sym->internalName = strdup(_generateNonCollisioningSymbol(
+                                                        currSymTab->parent == NULL,
+                                                        name));
+
+    struct t_symbol_list* symList = currSymTab->symbols[_symHash(name) % NHASH];
+    if (symList != NULL) {
+        while (symList->next != NULL) {
+            symList = symList->next;
+        }
+    }
+
+    struct t_symbol_list* nextSymList = malloc(sizeof(struct t_symbol_list));
+    nextSymList->next = NULL;
+    nextSymList->symbol = sym;
+
+    if (symList != NULL) {
+        symList->next = nextSymList;
+    } else {
+        currSymTab->symbols[_symHash(name) % NHASH] = nextSymList;
+    }
+
+    return sym;
+}
+
+struct t_symbol* lookup(char* name) {
+    // Symbol wasn't found, therefore it doesn't exist
+    struct t_symbol* symbol = _lookup(name);
+    if (symbol == NULL) {
+        sprintf(str, "Symbol %s wasn't found", name);
+        yyerror(&str);
+    }
+
+    return symbol;
+}
+
+void pushSymbolTable() {
+    // Create and set new symbol table
+    struct t_symtab* symTab = malloc(sizeof(struct t_symtab));
+    symTab->parent = currSymTab;
+
+    // Add to children list
+    struct t_symtab_list* newList = malloc(sizeof(struct t_symtab_list));
+    newList->elem = symTab;
+    newList->next = currSymTab->children;
+    currSymTab->children = newList;
+
+    // Set current symbol table as the new symbol table
+    currSymTab = symTab;
+    labelStackPointer++;
+}
+
+void popSymbolTable() {
+    currSymTab = currSymTab->parent;
+    labelStackPointer--;
+}
+
 void printSymbolTable() {
     _traverseSymbolTable(rootSymTab, 0);
 }
 
 t_bool verifyArguments(struct t_arguments_list* args1, struct t_arguments_list* args2) {
     while(args1 != NULL && args2 != NULL) {
-        if (args1->type != args2->type) {
+        if (args1->type->type != args2->type->type) {
             return FALSE;
         }
+
         args1 = args1->next;
         args2 = args2->next;
     }
@@ -230,11 +284,59 @@ char* createLabel() {
 }
 
 void emit(char* code) {
-    resultingCode[nextStat++] = strdup(code);
+    resultingCode[nextLOC++] = strdup(code);
+}
+
+void emitConstant(char* code) {
+    constants[nextConstant++] = strdup(code);
 }
 
 void writeCodeToFile(FILE* outputFile) {
-    for(int i = 0; i < nextStat; i++) {
+    t_bool declareUsed = FALSE;
+
+    if (printUsed[0]) {
+        declareUsed = TRUE;
+        fprintf(outputFile, "declare void @printInt(i32)\n");
+    }
+
+    if (printUsed[1]) {
+        declareUsed = TRUE;
+        fprintf(outputFile, "declare void @printDouble(double)\n");
+    }
+
+    if (printUsed[2]) {
+        declareUsed = TRUE;
+        fprintf(outputFile, "declare void @printString(i8*)\n");
+    }
+
+    if (readUsed[0]) {
+        declareUsed = TRUE;
+        fprintf(outputFile, "declare i32 @readInt()\n");
+    }
+
+    if (readUsed[1]) {
+        declareUsed = TRUE;
+        fprintf(outputFile, "declare double @readDouble()\n");
+    }
+
+    if (readUsed[2]) {
+        declareUsed = TRUE;
+        fprintf(outputFile, "declare i8* @readLine()\n");
+    }
+
+    if (declareUsed) {
+        fprintf(outputFile, "\n");
+    }
+
+    for(int i = 0; i < nextConstant; i++) {
+        fprintf(outputFile, "%s\n", constants[i]);
+    }
+
+    if (nextConstant > 0) {
+        fprintf(outputFile, "\n");
+    }
+
+    for(int i = 0; i < nextLOC; i++) {
         fprintf(outputFile, "%s\n", resultingCode[i]);
     }
 }
@@ -403,14 +505,5 @@ int stringLength(char* str) {
     }
 
     return count;
-}
-
-void emitHeader() {
-    emit("declare void @printInt(i32)");
-    emit("declare void @printDouble(double)");
-    emit("declare void @printString(i8*)");
-    emit("declare i32 @readInt()");
-    emit("declare double @readDouble()");
-    emit("declare i8* @readLine()");
 }
 
