@@ -10,13 +10,10 @@
  */
 static int nnew, nold;
 static int nprobe;
-static int temporalCount;
 static int labelCount;
-static int nextLOC;
 static int nextConstant;
 static int stringConstantCount;
 static char* constants[100];
-static char* resultingCode[10000];
 
 /**
  * Static function declarations
@@ -273,13 +270,7 @@ void initializeSymbolTable() {
 
 char* createTemporal() {
     char* temporal = malloc(5 * sizeof(char));
-    sprintf(temporal, "%%t%d", temporalCount++);
-    return temporal;
-}
-
-char* createLabel() {
-    char* temporal = malloc(7 * sizeof(char));
-    sprintf(temporal, "lab%d", labelCount++);
+    sprintf(temporal, "%%%d", temporalCount++);
     return temporal;
 }
 

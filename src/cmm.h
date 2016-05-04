@@ -67,17 +67,28 @@ struct t_labels {
     char* endLabel;
 };
 
+struct t_labels_loc {
+    int startLabel;
+    int label1;
+    int label2;
+    int endLabel;
+};
+
 /**
  * Variables
  */
 char str[10000];
+char* resultingCode[10000];
 int labelStackPointer;
 struct t_labels labelStack[100];
+struct t_labels_loc labelStackLOC[100];
 struct t_symbol* place;
 struct t_symbol* currentFunction;
 struct t_symtab* currSymTab;
 struct t_symtab* rootSymTab;
+int temporalCount;
 int lineNumber;
+int nextLOC;
 t_bool hasError;
 t_bool printUsed[3];
 t_bool readUsed[3];
@@ -98,7 +109,6 @@ void emitConstant(char* code);
 void emit(char* code);
 void writeCodeToFile(FILE* outputFile);
 char* createTemporal();
-char* createLabel();
 struct t_instr* allocateInstr();
 struct t_type* allocateType();
 struct t_arguments_list* allocateArgumentsList();

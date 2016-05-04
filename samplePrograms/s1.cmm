@@ -1,11 +1,12 @@
 int function(int a, int b) {
+    int c;
     if (a == b) {
-        return a;
+        c = a;
     } else {
-        return b;
+        c = b;
     }
 
-    return a;
+    return c;
 }
 
 void voidFunction() {

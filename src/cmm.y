@@ -144,18 +144,23 @@ baseType : INT {
          ;
 
 declFunction : declFunctionHead scopeStart block scopeEnd scopeEnd functionEnd {
-                   if(currentFunction->type->type != VOID_FUNCTION_TYPE && currentFunction->returnCount == 0) {
+                   if (currentFunction->type->type != VOID_FUNCTION_TYPE && currentFunction->returnCount == 0) {
                        sprintf(str, "The function %s needs at least one return", currentFunction->name);
+                       yyerror(str);
+                   }
+                   if (currentFunction->returnCount > 1) {
+                       sprintf(str, "The function %s can only have one return", currentFunction->name);
                        yyerror(str);
                    }
                }
              ;
 
 declFunctionHead : declFunctionType scopeStart LPAREN formals RPAREN {
+                       emit("");
+                       temporalCount = 1;
                        currentFunction->arguments = $4->args;
-                       sprintf(str, "define %s @%s(%s) {", transformType($1->type), $1->addr, $4->addr);
+                       sprintf(str, "define %s %s(%s) #0 {", transformType($1->type), $1->addr, $4->addr);
                        emit(str);
-                       emit("entry:");
 
                        char* varName = allocateString(50);
                        char* type = allocateString(10);
@@ -191,34 +196,35 @@ declFunctionHead : declFunctionType scopeStart LPAREN formals RPAREN {
 
                            past = curr + 1;
                        }
-                 }
+                   }
                  ;
 
 declFunctionType : type IDENTIFIER {
                        place = createSymbol($2);
                        place->type->type = $1->type + START_FUNCTION_TYPE;
                        place->type->size = $1->size;
+                       place->returnCount = 0;
                        currentFunction = place;
 
                        $$ = allocateInstr();
                        $$->type->type = $1->type + START_FUNCTION_TYPE;
                        $$->type->size = $1->size;
-                       $$->addr = strdup($2);
+                       $$->addr = strdup(place->internalName);
                    }
                  | VOID IDENTIFIER {
                        place = createSymbol($2);
                        place->type->type = VOID_FUNCTION_TYPE;
+                       place->returnCount = 0;
                        currentFunction = place;
 
                        $$ = allocateInstr();
                        $$->type->type = VOID_FUNCTION_TYPE;
-                       $$->addr = strdup($2);
+                       $$->addr = strdup(place->internalName);
                    }
                  ;
 
 functionEnd : %empty {
                   emit("}");
-                  emit("");
             }
 
 formals : %empty {
@@ -330,38 +336,69 @@ instrIfCond : expr {
                   if ($1->type->type != BOOL_TYPE) {
                       yyerror("Non-compatible types: if");
                   } else {
-                      labelStack[labelStackPointer].label1 = createLabel();
-                      labelStack[labelStackPointer].label2 = createLabel();
-                      labelStack[labelStackPointer].endLabel = createLabel();
-                      sprintf(str, "  br i1 %s, label %%%s, label %%%s", $1->addr, labelStack[labelStackPointer].label1, labelStack[labelStackPointer].label2);
+                      labelStack[labelStackPointer].label1 = createTemporal();
+                      labelStackLOC[labelStackPointer].label1 = nextLOC;
+
+                      sprintf(str, "  br i1 %s, label %s, label ", $1->addr, labelStack[labelStackPointer].label1);
                       emit(str);
-                      sprintf(str, "%s:", labelStack[labelStackPointer].label1);
+
+                      emit("");
+
+                      sprintf(str, "; <label>:%s", labelStack[labelStackPointer].label1 + 1);
                       emit(str);
                   }
               }
             ;
 
 instrIfElse : ELSE {
-                  sprintf(str, "  br label %%%s", labelStack[labelStackPointer].endLabel);
+                  labelStack[labelStackPointer].label2 = createTemporal();
+                  labelStackLOC[labelStackPointer].label2 = nextLOC;
+
+                  sprintf(str, "  br label ");
                   emit(str);
-                  sprintf(str, "%s:", labelStack[labelStackPointer].label2);
+
+                  emit("");
+
+                  sprintf(str, "; <label>:%s", labelStack[labelStackPointer].label2 + 1);
                   emit(str);
+
+                  sprintf(str, "%s", resultingCode[labelStackLOC[labelStackPointer].label1]);
+                  sprintf(str + strlen(str), "%s", labelStack[labelStackPointer].label2);
+                  resultingCode[labelStackLOC[labelStackPointer].label1] = strdup(str);
               }
             ;
 
 instrIfEnd : %empty %prec "then" {
-                 sprintf(str, "  br label %%%s", labelStack[labelStackPointer].label2);
+                 labelStack[labelStackPointer].label2 = createTemporal();
+
+                 sprintf(str, "  br label %s", labelStack[labelStackPointer].label2);
                  emit(str);
-                 sprintf(str, "%s:", labelStack[labelStackPointer].label2);
+
+                 emit("");
+
+                 sprintf(str, "; <label>:%s", labelStack[labelStackPointer].label2 + 1);
                  emit(str);
+
+                 sprintf(str, "%s", resultingCode[labelStackLOC[labelStackPointer].label1]);
+                 sprintf(str + strlen(str), "%s", labelStack[labelStackPointer].label2);
+                 resultingCode[labelStackLOC[labelStackPointer].label1] = strdup(str);
              }
            ;
 
 instrIfElseEnd : %empty {
-                     sprintf(str, "  br label %%%s", labelStack[labelStackPointer].endLabel);
+                     labelStack[labelStackPointer].endLabel = createTemporal();
+
+                     sprintf(str, "  br label %s", labelStack[labelStackPointer].endLabel);
                      emit(str);
-                     sprintf(str, "%s:", labelStack[labelStackPointer].endLabel);
+
+                     emit("");
+
+                     sprintf(str, "; <label>:%s", labelStack[labelStackPointer].endLabel + 1);
                      emit(str);
+
+                     sprintf(str, "%s", resultingCode[labelStackLOC[labelStackPointer].label2]);
+                     sprintf(str + strlen(str), "%s", labelStack[labelStackPointer].endLabel);
+                     resultingCode[labelStackLOC[labelStackPointer].label2] = strdup(str);
                  }
                ;
 
@@ -369,12 +406,14 @@ instrWhile : instrWhileStart WHILE LPAREN instrWhileCond RPAREN instr instrWhile
            ;
 
 instrWhileStart : %empty {
-                      labelStack[labelStackPointer].startLabel = createLabel();
-                      labelStack[labelStackPointer].label1 = createLabel();
-                      labelStack[labelStackPointer].endLabel = createLabel();
-                      sprintf(str, "  br label %%%s", labelStack[labelStackPointer].startLabel);
+                      labelStack[labelStackPointer].startLabel = createTemporal();
+
+                      sprintf(str, "  br label %s", labelStack[labelStackPointer].startLabel);
                       emit(str);
-                      sprintf(str, "%s:", labelStack[labelStackPointer].startLabel);
+
+                      emit("");
+
+                      sprintf(str, "; <label>:%s", labelStack[labelStackPointer].startLabel + 1);
                       emit(str);
                   }
                 ;
@@ -383,19 +422,34 @@ instrWhileCond : expr {
                      if ($1->type->type != BOOL_TYPE) {
                          yyerror("Non-compatible types: while");
                      } else {
-                         sprintf(str, "  br i1 %s , label %%%s , label %%%s", $1->addr, labelStack[labelStackPointer].label1, labelStack[labelStackPointer].endLabel);
+                         labelStack[labelStackPointer].label1 = createTemporal();
+                         labelStackLOC[labelStackPointer].label1 = nextLOC;
+
+                         sprintf(str, "  br i1 %s , label %s , label ", $1->addr, labelStack[labelStackPointer].label1);
                          emit(str);
-                         sprintf(str, "%s:", labelStack[labelStackPointer].label1);
+
+                         emit("");
+
+                         sprintf(str, "; <label>:%s", labelStack[labelStackPointer].label1 + 1);
                          emit(str);
                      }
                  }
                ;
 
 instrWhileEnd : %empty {
-                    sprintf(str, "  br label %%%s", labelStack[labelStackPointer].startLabel);
+                    labelStack[labelStackPointer].endLabel = createTemporal();
+
+                    sprintf(str, "  br label %s", labelStack[labelStackPointer].startLabel);
                     emit(str);
-                    sprintf(str, "%s:", labelStack[labelStackPointer].endLabel);
+
+                    emit("");
+
+                    sprintf(str, "; <label>:%s", labelStack[labelStackPointer].endLabel + 1);
                     emit(str);
+
+                    sprintf(str, "%s", resultingCode[labelStackLOC[labelStackPointer].label1]);
+                    sprintf(str + strlen(str), "%s", labelStack[labelStackPointer].endLabel);
+                    resultingCode[labelStackLOC[labelStackPointer].label1] = strdup(str);
                 }
               ;
 
@@ -403,13 +457,14 @@ instrFor : FOR LPAREN optExpr instrForStart SEMICOLON instrForCond SEMICOLON opt
          ;
 
 instrForStart : %empty {
-                    labelStack[labelStackPointer].startLabel = createLabel();
-                    labelStack[labelStackPointer].label1 = createLabel();
-                    labelStack[labelStackPointer].label2 = createLabel();
-                    labelStack[labelStackPointer].endLabel = createLabel();
-                    sprintf(str, "  br label %%%s", labelStack[labelStackPointer].startLabel);
+                    labelStack[labelStackPointer].startLabel = createTemporal();
+
+                    sprintf(str, "  br label %s", labelStack[labelStackPointer].startLabel);
                     emit(str);
-                    sprintf(str, "%s:", labelStack[labelStackPointer].startLabel);
+
+                    emit("");
+
+                    sprintf(str, "; <label>:%s", labelStack[labelStackPointer].startLabel);
                     emit(str);
                 }
               ;
@@ -418,27 +473,51 @@ instrForCond : expr {
                    if ($1->type->type != BOOL_TYPE) {
                        yyerror("Non-compatible types: for");
                    } else {
-                       sprintf(str, "  br i1 %s , label %%%s , label %%%s", $1->addr, labelStack[labelStackPointer].label1, labelStack[labelStackPointer].endLabel);
+                       labelStack[labelStackPointer].label2 = createTemporal();
+                       labelStackLOC[labelStackPointer].label2 = nextLOC;
+
+                       sprintf(str, "  br i1 %s ", $1->addr);
                        emit(str);
-                       sprintf(str, "%s:", labelStack[labelStackPointer].label2);
+
+                       emit("");
+
+                       sprintf(str, "; <label>:%s", labelStack[labelStackPointer].label2);
                        emit(str);
                    }
                }
              ;
 
 instrForLabel : %empty {
-                    sprintf(str, "  br label %%%s", labelStack[labelStackPointer].startLabel);
+                    labelStack[labelStackPointer].label1 = createTemporal();
+
+                    sprintf(str, "  br label %s", labelStack[labelStackPointer].startLabel);
                     emit(str);
-                    sprintf(str, "%s:", labelStack[labelStackPointer].label1);
+
+                    emit("");
+
+                    sprintf(str, "; <label>:%s", labelStack[labelStackPointer].label1);
                     emit(str);
+
+                    sprintf(str, "%s", resultingCode[labelStackLOC[labelStackPointer].label2]);
+                    sprintf(str + strlen(str), ", label %s", labelStack[labelStackPointer].label1);
+                    resultingCode[labelStackLOC[labelStackPointer].label2] = strdup(str);
                 }
               ;
 
 instrForEnd : %empty {
-                  sprintf(str, "  br label %%%s", labelStack[labelStackPointer].label2);
+                  labelStack[labelStackPointer].endLabel = createTemporal();
+
+                  sprintf(str, "  br label %s", labelStack[labelStackPointer].label2);
                   emit(str);
-                  sprintf(str, "%s:", labelStack[labelStackPointer].endLabel);
+
+                  emit("");
+
+                  sprintf(str, "; <label>:%s", labelStack[labelStackPointer].endLabel);
                   emit(str);
+
+                  sprintf(str, "%s", resultingCode[labelStackLOC[labelStackPointer].label2]);
+                  sprintf(str + strlen(str), ", label %s", labelStack[labelStackPointer].endLabel);
+                  resultingCode[labelStackLOC[labelStackPointer].label2] = strdup(str);
               }
             ;
 
@@ -895,7 +974,7 @@ call : IDENTIFIER LPAREN reals RPAREN {
                yyerror(&str);
            } else {
                char* temp = createTemporal();
-               sprintf(str, "  %s = call %s @%s(%s)", temp, transformType(place->type), $1, $3->addr);
+               sprintf(str, "  %s = call %s %s(%s)", temp, transformType(place->type), place->internalName, $3->addr);
                emit(str);
                $$->addr = temp;
            }
@@ -1030,20 +1109,20 @@ void generatePrints(struct t_instr* instr) {
             addr = createTemporal();
 
             sprintf(str,
-                    "%s = getelementptr [%d x i8]* %s, i32 0, i32 0",
-                    addr,
-                    instr->type->size,
-                    internalName);
-
-            emit(str);
-
-            sprintf(str,
                     "%s = internal constant [%d x i8] %s",
                     internalName,
                     instr->type->size,
                     convertString(instr->type->size, instr->addr));
 
             emitConstant(str);
+
+            sprintf(str,
+                    "  %s = getelementptr [%d x i8]* %s, i32 0, i32 0",
+                    addr,
+                    instr->type->size,
+                    internalName);
+
+            emit(str);
         }
 
         sprintf(str, "  call void @printString(i8* %s)", addr);
