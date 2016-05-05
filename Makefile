@@ -1,6 +1,14 @@
-C = clang
-LEX = ./bin/flex
-YACC = ./bin/bison
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	LEX = flex
+	YACC = bison
+	C = gcc
+endif
+ifeq ($(UNAME_S),Darwin)
+	LEX = ./bin/osx/flex
+	YACC = ./bin/osx/bison
+	C = clang
+endif
 
 LEX_FLAGS = -oout/lex.yy.c
 YACC_FLAGS = -d -oout/cmm.tab.c

@@ -585,7 +585,7 @@ expr : lValue ASSIGN expr {
                int size = $1->type->size;
                char* temp = createTemporal();
                const char* arrayType = transformArrayType($1->type);
-               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %s, i32 0, i32 %s", temp, size, arrayType, $1->internalName, $3->addr);
+               sprintf(str, "  %s = getelementptr inbounds [%d x %s], [%d x %s]* %s, i32 0, i32 %s", temp, size, arrayType, size, arrayType, $1->internalName, $3->addr);
                emit(str);
                sprintf(str, "  store %s %s, %s* %s", arrayType, $6->addr, arrayType, temp);
                emit(str);
@@ -602,10 +602,11 @@ expr : lValue ASSIGN expr {
            char* temp = createTemporal();
            if ($1->type->type == STRING_TYPE) {
                int size = $1->type->size;
-               sprintf(str, "  %s = getelementptr inbounds [%d x i8]* %s, i32 0, i32 0", temp, size, $1->internalName);
+               sprintf(str, "  %s = getelementptr inbounds [%d x i8], [%d x i8]* %s, i32 0, i32 0", temp, size, size, $1->internalName);
                emit(str);
            } else {
-               sprintf(str, "  %s = load %s* %s", temp, transformType($1->type), $1->internalName);
+               const char* type = transformType($1->type);
+               sprintf(str, "  %s = load %s, %s* %s", temp, type, type, $1->internalName);
                emit(str);
            }
 
@@ -624,10 +625,10 @@ expr : lValue ASSIGN expr {
                int size = $1->type->size;
                const char* arrayType = transformArrayType($1->type);
                char* temp1 = createTemporal();
-               sprintf(str, "  %s = getelementptr inbounds [%d x %s]* %s, i32 0, i32 %s", temp1, size, arrayType, $1->internalName, $3->addr);
+               sprintf(str, "  %s = getelementptr inbounds [%d x %s], [%d x %s]* %s, i32 0, i32 %s", temp1, size, arrayType, size, arrayType, $1->internalName, $3->addr);
                emit(str);
                char* temp2 = createTemporal();
-               sprintf(str, "  %s = load %s* %s", temp2, arrayType, temp1);
+               sprintf(str, "  %s = load %s, %s* %s", temp2, arrayType, arrayType, temp1);
                emit(str);
                if ($1->type->type == STRING_TYPE) {
                    char* temp3 = createTemporal();
@@ -1117,8 +1118,9 @@ void generatePrints(struct t_instr* instr) {
             emitConstant(str);
 
             sprintf(str,
-                    "  %s = getelementptr [%d x i8]* %s, i32 0, i32 0",
+                    "  %s = getelementptr [%d x i8], [%d x i8]* %s, i32 0, i32 0",
                     addr,
+                    instr->type->size,
                     instr->type->size,
                     internalName);
 

@@ -91,7 +91,7 @@ $|\,void\,identificador$
 \\\\
 Este cambio puede parecer minúsculo, sin embargo, nos permite que la tabla de símbolos guarde el identificador de la función para ser usado en la función de abajo.
 \\\\
-Para manejar los \textit{fors} en vez de utilizar la técnica de \textit{backpatching} se cambió la gramática y se insertaron expresiones vacías, cuyo único propósito es generar código. Por lo que las expresiones:
+Para manejar los \textit{fors} se utilizó la técnica de \textit{backpatching} y se cambió la gramática insertando expresiones vacías, cuyo único propósito es generar código. Por lo que las expresiones:
 \\\\
 $InstrIf\,::=\,if\,(\,Expr\,)\,Instr\,<\,else\,Instr\,>$
 \\

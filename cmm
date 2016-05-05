@@ -4,6 +4,7 @@ from __future__ import print_function
 from distutils.spawn import find_executable
 
 import argparse
+import platform
 import subprocess
 import sys
 import os.path
@@ -28,12 +29,6 @@ def parse_arguments():
                         choices=['assembly', 'executable', 'intermediate'],
                         help='tells the compiler which is the target it should generate')
 
-    parser.add_argument('--arch', dest='arch', type=str, default='current',
-                        choices=['mips', 'current'],
-                        help='tells the compiler the target architecure you\
-                        want for your output. If the target doesn\'t generate\
-                        code, this flag is ignored')
-
     parser.add_argument('source', type=argparse.FileType('r'), nargs=1,
                         help='the source file to be compiled')
 
@@ -54,23 +49,38 @@ def find_tools():
 
     llvm_as = find_executable('llvm-as')
     if not llvm_as:
-        llvm_as = os.path.abspath('./bin/llvm-as')
+        if platform.system() == 'Linux':
+            llvm_as = os.path.abspath('./bin/linux/llvm-as')
+        else:
+            llvm_as = os.path.abspath('./bin/osx/llvm-as')
 
     llvm_link = find_executable('llvm-link')
     if not llvm_link:
-        llvm_link = os.path.abspath('./bin/llvm-link')
+        if platform.system() == 'Linux':
+            llvm_link = os.path.abspath('./bin/linux/llvm-link')
+        else:
+            llvm_link = os.path.abspath('./bin/osx/llvm-link')
 
     llvm_opt = find_executable('opt')
     if not llvm_opt:
-        llvm_opt = os.path.abspath('./bin/opt')
+        if platform.system() == 'Linux':
+            llvm_opt = os.path.abspath('./bin/linux/opt')
+        else:
+            llvm_opt = os.path.abspath('./bin/osx/opt')
 
     llvm_llc = find_executable('llc')
     if not llvm_llc:
-        llvm_llc = os.path.abspath('./bin/llc')
+        if platform.system() == 'Linux':
+            llvm_llc = os.path.abspath('./bin/linux/llc')
+        else:
+            llvm_llc = os.path.abspath('./bin/osx/llc')
 
     llvm_dis = find_executable('llvm-dis')
     if not llvm_dis:
-        llvm_dis = os.path.abspath('./bin/llvm-dis')
+        if platform.system() == 'Linux':
+            llvm_dis = os.path.abspath('./bin/linux/llvm-dis')
+        else:
+            llvm_dis = os.path.abspath('./bin/osx/llvm-dis')
 
     cmm_front = os.path.abspath('./out/cmmFront')
     if not os.path.isfile(cmm_front):
@@ -113,9 +123,15 @@ def main():
     intermediate_bitcode = 'main.bc'
     if args.optimized:
         intermediate_bitcode = 'main_opt.bc'
-        with open('main_opt.bc', 'w') as main_opt:
-            llvm_opt_flags = '-std-link-opts'
-            subprocess.call([llvm_opt, llvm_opt_flags, 'main.bc'], stdout=main_opt)
+
+        llvm_opt_flags = '-stats -O3'
+
+        llvm_opt_args = [llvm_opt]
+        llvm_opt_args.extend(llvm_opt_flags.split(' '))
+        llvm_opt_args.append('-o=main_opt.bc')
+        llvm_opt_args.append('main.bc')
+
+        subprocess.call(llvm_opt_args)
 
     if args.target == 'intermediate':
         subprocess.call([llvm_dis, intermediate_bitcode])
@@ -124,9 +140,6 @@ def main():
         llvm_llc_flags = '-filetype=obj'
         if args.target == 'assembly':
             llvm_llc_flags = '-filetype=asm'
-
-        if args.arch == 'mips':
-            llvm_llc_flags += ' -march=mipsel -relocation-model=static'
 
         llvm_llc_args = [llvm_llc]
         llvm_llc_args.extend(llvm_llc_flags.split(' '))
@@ -141,7 +154,7 @@ def main():
             clang_flags = '-o' + output_file_name
             subprocess.call([clang, clang_flags, '-w', intermediate_bitcode.replace('.bc', '.o')])
 
-    with open('/dev/null', 'w') as devNull:
+    with open('/dev/null', 'w') as dev_null:
         subprocess.call([rm,
                          'program.ll' if os.path.splitext(source_file.name)[1] != '.ll' else '',
                          'program.bc',
@@ -149,7 +162,7 @@ def main():
                          'main.bc',
                          intermediate_bitcode,
                          intermediate_bitcode.replace('.bc', '.o')],
-                        stderr=devNull)
+                        stderr=dev_null)
 
     return
 

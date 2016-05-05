@@ -7,44 +7,44 @@ declare i32 @printf(i8*, ...)
 declare i32 @scanf(i8*, ...)
 declare i32 @puts(i8*)
 
-define void @printInt(i32 %x) {
-entry:  %t0 = getelementptr [3 x i8]* @d, i32 0, i32 0
-        call i32 (i8*, ...)* @printf(i8* %t0, i32 %x)
-        ret void
+define void @printInt(i32 %x) #0 {
+  %1 = getelementptr [3 x i8], [3 x i8]* @d, i32 0, i32 0
+  %2 = call i32 (i8*, ...) @printf(i8* %1, i32 %x)
+  ret void
 }
 
-define void @printDouble(double %x) {
-entry:  %t0 = getelementptr [4 x i8]* @lf, i32 0, i32 0
-        call i32 (i8*, ...)* @printf(i8* %t0, double %x)
-        ret void
+define void @printDouble(double %x) #0 {
+  %1 = getelementptr [4 x i8], [4 x i8]* @lf, i32 0, i32 0
+  %2 = call i32 (i8*, ...) @printf(i8* %1, double %x)
+  ret void
 }
 
-define void @printString(i8* %s) {
-entry:  %t0 = getelementptr [3 x i8]* @s, i32 0, i32 0
-        call i32 (i8*, ...)* @printf(i8* %t0, i8* %s)
-        ret void
+define void @printString(i8* %s) #0 {
+  %1 = getelementptr [3 x i8], [3 x i8]* @s, i32 0, i32 0
+  %2 = call i32 (i8*, ...) @printf(i8* %1, i8* %s)
+  ret void
 }
 
-define i32 @readInt() {
-entry:  %res = alloca i32
-        %t1 = getelementptr [3 x i8]* @d, i32 0, i32 0
-        call i32 (i8*, ...)* @scanf(i8* %t1, i32* %res)
-        %t2 = load i32* %res
-        ret i32 %t2
+define i32 @readInt() #0 {
+  %res = alloca i32
+  %1 = getelementptr [3 x i8], [3 x i8]* @d, i32 0, i32 0
+  %2 = call i32 (i8*, ...) @scanf(i8* %1, i32* %res)
+  %3 = load i32, i32* %res
+  ret i32 %3
 }
 
-define double @readDouble() {
-entry:  %res = alloca double
-        %t1 = getelementptr [4 x i8]* @lf, i32 0, i32 0
-        call i32 (i8*, ...)* @scanf(i8* %t1, double* %res)
-        %t2 = load double* %res
-        ret double %t2
+define double @readDouble() #0 {
+  %res = alloca double
+  %1 = getelementptr [4 x i8], [4 x i8]* @lf, i32 0, i32 0
+  %2 = call i32 (i8*, ...) @scanf(i8* %1, double* %res)
+  %3 = load double, double* %res
+  ret double %3
 }
 
-define i8* @readLine() {
-entry:  %res = alloca i8*
-        %t1 = getelementptr [4 x i8]* @sn, i32 0, i32 0
-        call i32 (i8*, ...)* @scanf(i8* %t1, i8** %res)
-        %t2 = load i8** %res
-        ret i8* %t2
+define i8* @readLine() #0 {
+  %res = alloca i8*
+  %1 = getelementptr [4 x i8], [4 x i8]* @sn, i32 0, i32 0
+  %2 = call i32 (i8*, ...) @scanf(i8* %1, i8** %res)
+  %3 = load i8*, i8** %res
+  ret i8* %3
 }
