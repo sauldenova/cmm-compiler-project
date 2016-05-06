@@ -1,11 +1,48 @@
 \documentclass[11pt]{article}
 
 \usepackage[spanish,mexico]{babel}
+\usepackage{amssymb}
+\usepackage{amsmath}
 \usepackage{epsfig}
 \usepackage{float}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage{hyperref}
+\usepackage{listings}
+\usepackage{mips}
+
+\usepackage{color}
+  
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+ 
+\lstset{ %
+  language=[mips]Assembler,       % the language of the code
+  basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+  numbers=left,                   % where to put the line-numbers
+  numberstyle=\tiny\color{gray},  % the style that is used for the line-numbers
+  stepnumber=1,                   % the step between two line-numbers. If it's 1, each line 
+                                  % will be numbered
+  numbersep=5pt,                  % how far the line-numbers are from the code
+  backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+  showspaces=false,               % show spaces adding particular underscores
+  showstringspaces=false,         % underline spaces within strings
+  showtabs=false,                 % show tabs within strings adding particular underscores
+  frame=single,                   % adds a frame around the code
+  rulecolor=\color{black},        % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. commens (green here))
+  tabsize=4,                      % sets default tabsize to 2 spaces
+  captionpos=b,                   % sets the caption-position to bottom
+  breaklines=true,                % sets automatic line breaking
+  breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+  title=\lstname,                 % show the filename of files included with \lstinputlisting;
+                                  % also try caption instead of title
+  keywordstyle=\color{blue},          % keyword style
+  commentstyle=\color{dkgreen},       % comment style
+  stringstyle=\color{mauve},         % string literal style
+  escapeinside={\%*}{*)},            % if you want to add a comment within your code
+  morekeywords={*,...}               % if you want to add more keywords to the set
+}
 
 \begin{document}
 
@@ -193,8 +230,9 @@ Para limpiar los ejecutables utiliza el comando: \textbf{make clean}.
 Para compilar un programa utilizamos el comando \textbf{cmm}. El compilador tiene la siguiente ayuda:
  
 \begin{verbatim}
-usage: cmm [-h] [-o output] [--optimize]
+usage: cmm [-h] [-o OUTPUT] [--optimize]
            [--target {assembly,executable,intermediate}]
+           [--arch {mips,current}]
            source
 
 Compiler for the cmm language. Currently uses a LLVM backend.
@@ -204,12 +242,38 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -o output             the output destination file. By default this value is
+  -o OUTPUT             the output destination file. By default this value is
                         result.{target_extension}
   --optimize            optimize the generated intermediate code
   --target {assembly,executable,intermediate}
                         tells the compiler which is the target it should
                         generate
+  --arch {mips,current}
+                        tells the compiler the target architecure you want for
+                        your output. If the target doesn't generate code, this
+                        flag is ignored
 \end{verbatim}
+
+\pagebreak
+
+\section{Código ejemplo}
+
+A continuación, colocamos un resultado de lo que genera el compilador. Incluyendo código fuente, código intermedio y código resultado. 
+
+\subsection{Código fuente}
+
+\lstinputlisting[language=C]{s7.cmm}
+
+\pagebreak
+
+\subsection{Código intermedio}
+
+\lstinputlisting{s7.ll}
+
+\pagebreak
+
+\subsection{Código resultado}
+
+\lstinputlisting{s7.s}
 
 \end{document}

@@ -1136,11 +1136,14 @@ void generatePrints(struct t_instr* instr) {
 }
 
 int main(int argc, char **argv) {
-    if(argc > 1) {
+    if(argc == 3) {
         if(!(yyin = fopen(argv[1], "r"))) {
             perror(argv[1]);
             return (1);
         }
+    } else {
+        printf("Please run the wrapper script\n");
+        return (1);
     }
 
     initializeSymbolTable();
@@ -1162,7 +1165,7 @@ int main(int argc, char **argv) {
 
         FILE* input = fopen("program.ll", "w");
 
-        writeCodeToFile(input);
+        writeCodeToFile(argv[1], argv[2], input);
 
         fclose(input);
 

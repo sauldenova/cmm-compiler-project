@@ -282,7 +282,12 @@ void emitConstant(char* code) {
     constants[nextConstant++] = strdup(code);
 }
 
-void writeCodeToFile(FILE* outputFile) {
+void writeCodeToFile(const char* inputFileName, const char* targetTriple, FILE* outputFile) {
+    fprintf(outputFile, "; ModuleID = '%s'\n", inputFileName);
+    if (strcmp(targetTriple, "") != 0) {
+        fprintf(outputFile, "target triple = \"%s\"\n", targetTriple);
+    }
+
     t_bool declareUsed = FALSE;
 
     if (printUsed[0]) {

@@ -107,7 +107,7 @@ void pushSymbolTable();
 void popSymbolTable();
 void emitConstant(char* code);
 void emit(char* code);
-void writeCodeToFile(FILE* outputFile);
+void writeCodeToFile(const char* inputFileName, const char* targetTriple, FILE* outputFile);
 char* createTemporal();
 struct t_instr* allocateInstr();
 struct t_type* allocateType();
